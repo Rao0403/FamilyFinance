@@ -1,0 +1,64 @@
+# Family Finance
+
+A private browser-based finance tracker for four family members in India. Each member owns their data and explicitly controls sharing. The [project specification](PROJECT_SPEC.md) records the agreed product rules.
+
+## Current implementation
+
+- Cloudflare Worker API, D1 database, private R2 document storage, and a responsive browser UI.
+- Individual membership, owner-controlled view/edit grants, and account sharing that includes transactions and linked statements.
+- Indian Bank PDF text extraction into an editable review table. It does not auto-save extracted transactions; the uploader must confirm them. Password-protected text PDFs can be opened with a password used only in the browser. Scanned PDFs still need OCR, and exact statement mapping requires a redacted sample.
+- CSV investment import with a review table, manual stock/mutual-fund snapshots, and FD records. Groww column mapping is provisional until a redacted export is supplied.
+- Payment schedules with optional transaction matching, email and SMS reminder jobs, source documents, spending and net worth checkpoint reports, and personal JSON export.
+
+**No live financial data or provider credentials are in this repository.** The deployment is not configured yet. Do not upload real statements to the local development database if other people can access that computer.
+
+## Local development
+
+Requirements: Node.js 24 and npm. On Windows PowerShell, use `npm.cmd` if `npm.ps1` is blocked by execution policy.
+
+1. Run `npm.cmd install`.
+2. Create `.dev.vars` (ignored by Git) with `DEV_EMAIL=dev@example.com` and `BOOTSTRAP_ADMIN_EMAIL=dev@example.com`. This bypass is active only on localhost/127.0.0.1, and the variable must never be set in production.
+3. Run `npm.cmd run db:migrate:local`.
+4. Run `npm.cmd run build` and `npm.cmd run worker:dev`.
+5. Open the URL Wrangler prints, normally `http://localhost:8787`.
+
+If Wrangler cannot write its config directory in a restricted environment, set `XDG_CONFIG_HOME` to a writable directory in the workspace for that shell session. `.wrangler-config/` is ignored by Git.
+
+## Deployment preparation
+
+Cloudflare is the proposed host. Before any production deployment:
+
+1. Create a D1 database and a **private** R2 bucket. Replace `REPLACE_AFTER_CREATION` in `wrangler.jsonc` with the D1 database ID.
+2. Configure Cloudflare Access for the entire Worker, with an allow policy containing only the four family email addresses. Cloudflare's [Worker Access guide](https://developers.cloudflare.com/workers/configuration/cloudflare-access/) describes the Worker-level setting, which covers `workers.dev` and custom domains. Set `ACCESS_TEAM_DOMAIN` and `ACCESS_AUD` in Wrangler from that Access application.
+3. Set `BOOTSTRAP_ADMIN_EMAIL` to the first family member's email. That address is the only account that can initialize the empty membership table. Other members are invited from the app and must also be on the Cloudflare Access allow list.
+4. Keep `DEV_EMAIL` unset in production. Run `npm.cmd run build`, apply remote D1 migrations, then deploy with Wrangler. Verify private Access protection before inviting the family or uploading files.
+5. Establish a separate backup of the D1 export **and** R2 documents before using the app with real data. D1 Time Travel alone does not back up R2 files. Test a restore using non-sensitive data.
+
+Deployment should wait until document import tests with redacted real samples and the privacy checks are complete.
+
+## Reminder providers
+
+The Worker cron runs daily at 09:00 India Standard Time (`03:30` UTC). It sends a generic message to the payment owner only, avoiding payment names and amounts in email/SMS. It records whether the provider accepted or rejected each attempt.
+
+- Email: configure a verified sender in `RESEND_FROM` and store `RESEND_API_KEY` as a Worker secret. The adapter uses [Resend's email API](https://resend.com/vercel).
+- SMS: complete MSG91's India sender/DLT and approved template setup, configure `MSG91_TEMPLATE_ID`, and store `MSG91_AUTHKEY` as a Worker secret. The adapter uses [MSG91's flow API](https://docs.msg91.com/sms/send-sms). The approved template should contain the generic reminder wording. A phone number in `91XXXXXXXXXX` format is entered by each member in Settings.
+
+Provider accounts, approved SMS template and credentials are not supplied by this repository. SMS charges are separate from Cloudflare hosting.
+
+## Backups
+
+Keep backups outside this repository in an encrypted location accessible only to the family administrator. A D1 export contains everyone’s private data, regardless of app sharing permissions. Cloudflare documents `wrangler d1 export` for a SQL backup and `rclone copy` for downloading a complete R2 bucket.
+
+```powershell
+New-Item -ItemType Directory -Path 'D:\SecureFamilyFinanceBackup' -Force
+npm.cmd exec wrangler d1 export family-finance --remote --output 'D:\SecureFamilyFinanceBackup\family-finance.sql'
+rclone copy r2:family-finance-documents 'D:\SecureFamilyFinanceBackup\documents'
+```
+
+Configure the `r2` remote with a private R2 access key using [Cloudflare’s rclone guide](https://developers.cloudflare.com/r2/examples/rclone/). Check the exported SQL file and document count, then periodically restore into separate test resources to verify the backup. Never commit backups, R2 keys, or `.dev.vars` to Git. See [Cloudflare’s D1 export guide](https://developers.cloudflare.com/d1/best-practices/import-export-data/) for restore commands.
+
+## Privacy model
+
+Cloudflare Access checks sign-in at the edge. The Worker independently verifies the Access JWT and matches its email to an active invited member. Every finance query checks the owner or an explicit share. An administrator can manage membership but does not automatically see another person's records. Source files are never served from a public R2 URL.
+
+See [Cloudflare Access authorization](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/) for the signed identity token and the [project spec](PROJECT_SPEC.md) for the intended access rules.

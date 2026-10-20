@@ -1,6 +1,6 @@
 # Family Finance Tracker — project specification (draft)
 
-Status: **For family review. No application implementation has started.**
+Status: **Implementation in progress.** Document parsers still require redacted family samples, and hosted services are not configured.
 
 ## 1. Purpose
 
@@ -25,6 +25,8 @@ The product should be built as one complete application against this specificati
 Each member has an individual login. An administrator may invite or deactivate users and manage application settings, but has no automatic access to financial records.
 
 The owner can grant and revoke view access to another member for an account, investment, payment, or its source document. The permission model must prevent exposure through summaries, charts, search, notifications, exports, and document downloads as well as detail pages. A family-wide number is calculated only from records the current viewer may see. The interface labels such numbers as **Visible to you**, so they are not mistaken for a complete family total.
+
+Sharing an account also shares its transactions and associated statement files with that recipient. Revoking account access revokes access to all of these. Other document types follow their own owner's sharing settings.
 
 Editing another person's records is not allowed unless the owner explicitly grants edit access. The owner can see who has access and when sharing changes were made. Revoking access removes the record from the recipient's views and future notifications.
 
@@ -110,12 +112,12 @@ SMS delivery has separate provider charges and setup. The sender rules for India
 
 Sources: [Cloudflare Workers pricing](https://developers.cloudflare.com/workers/platform/pricing/), [D1 pricing](https://developers.cloudflare.com/d1/platform/pricing/), [D1 limits and recovery](https://developers.cloudflare.com/d1/platform/limits/), [R2 pricing](https://developers.cloudflare.com/r2/pricing/), [Cloudflare plans](https://www.cloudflare.com/plans/), [Supabase pricing](https://supabase.com/pricing), [Supabase backups](https://supabase.com/docs/guides/platform/backups/), [Supabase regions](https://supabase.com/docs/guides/platform/regions), [TRAI sender guidance](https://www.trai.gov.in/advice-to-senders).
 
-## 9. Decisions needed before implementation
+## 9. Inputs needed to finish and deploy
 
 1. **Groww sample:** Confirm the available report formats and which exports cover stocks and mutual funds. A redacted sample file is needed to specify exact import columns and duplicate rules.
 2. **FD documents:** Confirm whether the available files are text PDFs, scanned PDFs, or images. A redacted sample is needed for exact extraction fields.
-3. **Hosting:** Review the Cloudflare hosting proposal and its backup plan before selecting a provider.
-4. **Sharing detail:** Decide whether sharing an account automatically shares its transactions and source statements, and whether access expires or lasts until revoked.
-5. **Reminders:** Decide default lead times and whether a recipient other than the payment owner may receive an email or SMS reminder. Confirm an SMS delivery route that fits India sender requirements.
+3. **Hosting:** Cloudflare is the current implementation target. Configure a Cloudflare account, Access, D1, R2, and independent backups before deployment.
+4. **Sharing detail:** Access lasts until the owner revokes it. An account grant includes its transactions and statement files.
+5. **Reminders:** The default lead time is three days and only the payment owner receives email or SMS. MSG91 sender registration, approved template, and provider credentials are needed for live SMS delivery.
 
-This draft is ready for review. Implementation begins only after the remaining choices and file formats are settled.
+This specification continues to guide implementation. Decisions that depend on real file formats and hosted provider setup remain open.
