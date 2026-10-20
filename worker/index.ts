@@ -110,6 +110,35 @@ async function handler(request: Request, env: Env): Promise<Response> {
     await audit(env, member, "profile", "member", member.id);
     return json({ ok: true });
   }
+  if (key === "me" && path[1] === "data" && method === "DELETE") {
+    const data = await body(request);
+    if (data.confirm !== "DELETE MY DATA") return fail(400, "Type DELETE MY DATA to confirm");
+    const documents = await readAll<{storage_key:string}>(env.DB.prepare("SELECT storage_key FROM documents WHERE owner_id=?").bind(member.id));
+    const statements: D1PreparedStatement[] = documents.map(doc => env.DB.prepare("INSERT INTO document_deletion_queue (id,storage_key) VALUES (?,?)").bind(uid(), doc.storage_key));
+    statements.push(
+      env.DB.prepare("DELETE FROM audit_log WHERE resource_id IN (SELECT id FROM transactions WHERE owner_id=?)").bind(member.id),
+      env.DB.prepare("DELETE FROM audit_log WHERE resource_id IN (SELECT id FROM imports WHERE owner_id=?)").bind(member.id),
+      env.DB.prepare("DELETE FROM audit_log WHERE resource_id IN (SELECT id FROM accounts WHERE owner_id=?)").bind(member.id),
+      env.DB.prepare("DELETE FROM audit_log WHERE resource_id IN (SELECT id FROM investments WHERE owner_id=?)").bind(member.id),
+      env.DB.prepare("DELETE FROM audit_log WHERE resource_id IN (SELECT id FROM payments WHERE owner_id=?)").bind(member.id),
+      env.DB.prepare("DELETE FROM audit_log WHERE resource_id IN (SELECT id FROM documents WHERE owner_id=?)").bind(member.id),
+      env.DB.prepare("DELETE FROM audit_log WHERE actor_id=?").bind(member.id),
+      env.DB.prepare("DELETE FROM shares WHERE owner_id=?").bind(member.id),
+      env.DB.prepare("DELETE FROM reminder_deliveries WHERE payment_id IN (SELECT id FROM payments WHERE owner_id=?)").bind(member.id),
+      env.DB.prepare("DELETE FROM payment_occurrences WHERE payment_id IN (SELECT id FROM payments WHERE owner_id=?)").bind(member.id),
+      env.DB.prepare("DELETE FROM investment_snapshots WHERE investment_id IN (SELECT id FROM investments WHERE owner_id=?)").bind(member.id),
+      env.DB.prepare("DELETE FROM transactions WHERE owner_id=?").bind(member.id),
+      env.DB.prepare("DELETE FROM imports WHERE owner_id=?").bind(member.id),
+      env.DB.prepare("DELETE FROM payments WHERE owner_id=?").bind(member.id),
+      env.DB.prepare("DELETE FROM investments WHERE owner_id=?").bind(member.id),
+      env.DB.prepare("DELETE FROM accounts WHERE owner_id=?").bind(member.id),
+      env.DB.prepare("DELETE FROM documents WHERE owner_id=?").bind(member.id)
+    );
+    await env.DB.batch(statements);
+    await audit(env, member, "delete_financial_data", "member", member.id, { documents: documents.length });
+    await clearDeletedDocuments(env);
+    return json({ ok: true, documents_queued: documents.length });
+  }
   if (key === "members") {
     if (method === "GET") return json(await readAll(env.DB.prepare("SELECT id,name,email,role,active FROM members WHERE active=1 ORDER BY created_at")));
     if (method === "POST" && member.role === "admin") {
@@ -117,10 +146,27 @@ async function handler(request: Request, env: Env): Promise<Response> {
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return fail(400, "Valid email required");
       const count = await env.DB.prepare("SELECT count(*) AS total FROM members WHERE active=1").first<{total:number}>();
       if ((count?.total ?? 0) >= 4) return fail(400, "This family workspace is limited to four active members");
+      const prior = await env.DB.prepare("SELECT id,active FROM members WHERE email=?").bind(email).first<{id:string;active:number}>();
+      if (prior?.active) return fail(409, "Member is already active");
+      if (prior) {
+        await env.DB.prepare("UPDATE members SET active=1,name=? WHERE id=?").bind(asText(data.name) || email.split("@")[0], prior.id).run();
+        await audit(env, member, "reactivate", "member", prior.id);
+        return json({ id: prior.id });
+      }
       const id = uid();
       await env.DB.prepare("INSERT INTO members (id,email,name) VALUES (?,?,?)").bind(id, email, asText(data.name) || email.split("@")[0]).run();
       await audit(env, member, "invite", "member", id);
       return json({ id }, 201);
+    }
+    if (method === "PATCH" && path[1] && member.role === "admin") {
+      if (path[1] === member.id) return fail(400, "Administrator cannot deactivate their own login");
+      const target = await env.DB.prepare("SELECT id,active FROM members WHERE id=?").bind(path[1]).first<{id:string;active:number}>();
+      if (!target) return fail(404, "Member not found");
+      const data = await body(request);
+      if (data.active !== false) return fail(400, "Only deactivation is supported here");
+      await env.DB.prepare("UPDATE members SET active=0 WHERE id=?").bind(path[1]).run();
+      await audit(env, member, "deactivate", "member", path[1]);
+      return json({ ok: true });
     }
   }
   if (key === "shares") {
@@ -469,6 +515,16 @@ async function runReminders(env: Env, at = new Date()) {
   }
 }
 
+async function clearDeletedDocuments(env: Env) {
+  const pending = await readAll<{id:string;storage_key:string}>(env.DB.prepare("SELECT id,storage_key FROM document_deletion_queue WHERE completed_at IS NULL LIMIT 100"));
+  for (const item of pending) {
+    try {
+      await env.DOCUMENTS.delete(item.storage_key);
+      await env.DB.prepare("DELETE FROM document_deletion_queue WHERE id=?").bind(item.id).run();
+    } catch (error) { console.error("Document deletion will be retried", error); }
+  }
+}
+
 export default {
   fetch(request: Request, env: Env) { return handler(request, env).catch(error => {
     const message = error instanceof Error ? error.message : "";
@@ -476,5 +532,5 @@ export default {
     console.error("Request failed", error);
     return fail(500, "Request failed. Refresh to check the latest state");
   }); },
-  scheduled(controller: ScheduledController, env: Env) { return runReminders(env, new Date(controller.scheduledTime)); }
+  scheduled(controller: ScheduledController, env: Env) { return Promise.all([runReminders(env, new Date(controller.scheduledTime)), clearDeletedDocuments(env)]).then(() => {}); }
 } satisfies ExportedHandler<Env>;

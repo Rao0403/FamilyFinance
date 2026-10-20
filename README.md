@@ -5,10 +5,10 @@ A private browser-based finance tracker for four family members in India. Each m
 ## Current implementation
 
 - Cloudflare Worker API, D1 database, private R2 document storage, and a responsive browser UI.
-- Individual membership, owner-controlled view/edit grants, and account sharing that includes transactions and linked statements.
+- Individual membership with admin deactivation/reactivation, owner-controlled view/edit grants, and account sharing that includes transactions and linked statements.
 - Indian Bank PDF text extraction into an editable review table. It does not auto-save extracted transactions; the uploader must confirm them. Password-protected text PDFs can be opened with a password used only in the browser. Scanned PDFs still need OCR, and exact statement mapping requires a redacted sample.
 - CSV investment import with a review table, manual stock/mutual-fund snapshots, and FD records. Groww column mapping is provisional until a redacted export is supplied.
-- Payment schedules with optional transaction matching, email and SMS reminder jobs, source documents, spending and net worth checkpoint reports, and personal JSON export.
+- Payment schedules with optional transaction matching, email and SMS reminder jobs, source documents, spending, investment allocation and net worth checkpoint reports, personal JSON export, and owner-initiated financial data deletion.
 
 **No live financial data or provider credentials are in this repository.** The deployment is not configured yet. Do not upload real statements to the local development database if other people can access that computer.
 
@@ -60,5 +60,7 @@ Configure the `r2` remote with a private R2 access key using [Cloudflare’s rcl
 ## Privacy model
 
 Cloudflare Access checks sign-in at the edge. The Worker independently verifies the Access JWT and matches its email to an active invited member. Every finance query checks the owner or an explicit share. An administrator can manage membership but does not automatically see another person's records. Source files are never served from a public R2 URL.
+
+An owner may delete their own financial records in Settings after typing a confirmation phrase. The database removes the records in one transaction and queues source files for R2 deletion. Failed file deletions are retried by the daily scheduled Worker. Membership and the deletion audit event remain; a backup created before deletion must be managed separately by the backup administrator.
 
 See [Cloudflare Access authorization](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/) for the signed identity token and the [project spec](PROJECT_SPEC.md) for the intended access rules.
