@@ -1,0 +1,49 @@
+.payment-row {
+  display: flex;
+  align-items: center;
+  gap: 17px;
+  padding: 17px 23px;
+  border-top: 1px solid #edf0ea;
+}
+.date-box {
+  width: 46px;
+  height: 46px;
+  border-radius: 10px;
+  background: #eff4e9;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+.date-box strong {
+  font-family: Manrope;
+  font-size: 17px;
+}
+.date-box small {
+  font-size: 10px;
+  color: #69816c;
+  text-transform: uppercase;
+}
+.payment-row .grow strong {
+  display: block;
+  font-size: 13px;
+}
+.payment-row .grow small {
+  display: block;
+  font-size: 11px;
+  color: #8c988f;
+  margin-top: 4px;
+  text-transform: capitalize;
+}
+.payment-end {
+  text-align: right;
+}
+.payment-end strong {
+  display: block;
+  font-family: Manrope;
+  font-size: 15px;
+}
+.payment-end button {
+  margin-top: 4px;
+}

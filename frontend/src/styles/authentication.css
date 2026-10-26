@@ -1,0 +1,23 @@
+.locked {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 25px;
+}
+.lock-icon {
+  font-size: 36px;
+  color: #245e44;
+}
+.locked h1 {
+  font-family: Manrope;
+  margin: 12px 0;
+}
+.locked p {
+  max-width: 430px;
+}
+.locked .muted {
+  margin-top: 0;
+}

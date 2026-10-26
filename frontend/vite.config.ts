@@ -1,8 +1,7 @@
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  root: "src",
-  publicDir: "../public",
+  root: "frontend",
   build: { outDir: "../dist", emptyOutDir: true },
-  server: { proxy: { "/api": "http://localhost:8787" } }
+  server: { proxy: { "/api": "http://localhost:8787" } },
 });

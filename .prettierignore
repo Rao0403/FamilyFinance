@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.wrangler/
+.wrangler-config/
+package-lock.json
+backend/migrations/
+docs/project-spec.md

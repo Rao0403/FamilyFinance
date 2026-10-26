@@ -1,0 +1,121 @@
+.account-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 25px;
+}
+.account-grid > .empty {
+  background: #fff;
+  border: 1px dashed #d5dfd7;
+  border-radius: 14px;
+}
+.account-card {
+  background: #fff;
+  border: 1px solid #e4e8e1;
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 2px 12px #273b2810;
+}
+.account-top {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+}
+.account-card h3 {
+  font-family: Manrope;
+  font-size: 15px;
+  margin: 22px 0 3px;
+}
+.account-card small {
+  color: #8c988f;
+  font-size: 11px;
+}
+.account-card > strong {
+  font-family: Manrope;
+  font-size: 25px;
+  display: block;
+  margin: 20px 0;
+}
+.account-bottom {
+  border-top: 1px solid #edf0ea;
+  padding-top: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+}
+.account-bottom span {
+  font-size: 10px;
+  color: #8c988f;
+}
+.pill {
+  display: inline-block;
+  border-radius: 50px;
+  background: #f1f4ee;
+  color: #607366;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.table-panel {
+  margin-top: 0;
+}
+.table-wrap {
+  overflow: auto;
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12px;
+}
+th {
+  text-align: left;
+  background: #f8faf6;
+  color: #8a968b;
+  font-size: 10px;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+th,
+td {
+  padding: 14px 20px;
+  border-top: 1px solid #edf0ea;
+  white-space: nowrap;
+}
+td strong {
+  font-weight: 700;
+}
+td.right,
+th.right {
+  text-align: right;
+}
+.table-sub {
+  display: block;
+  color: #9aa79c;
+  margin-top: 3px;
+}
+.summary-bar {
+  background: #eaf1e6;
+  border: 1px solid #dce8d8;
+  border-radius: 14px;
+  display: flex;
+  margin-bottom: 22px;
+  padding: 20px 25px;
+  gap: 40px;
+}
+.summary-bar div {
+  display: flex;
+  flex-direction: column;
+  min-width: 130px;
+}
+.summary-bar small {
+  color: #6f8573;
+  font-size: 11px;
+}
+.summary-bar strong {
+  font-family: Manrope;
+  font-size: 20px;
+  margin-top: 6px;
+}

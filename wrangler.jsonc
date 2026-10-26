@@ -1,15 +1,23 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "family-finance",
-  "main": "worker/index.ts",
+  "main": "backend/src/worker.ts",
+  "tsconfig": "backend/tsconfig.json",
   "compatibility_date": "2026-10-20",
   "assets": { "directory": "./dist", "binding": "ASSETS", "run_worker_first": ["/api/*"] },
   "triggers": { "crons": ["30 3 * * *"] },
-  "d1_databases": [{ "binding": "DB", "database_name": "family-finance", "database_id": "REPLACE_AFTER_CREATION", "migrations_dir": "migrations" }],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "family-finance",
+      "database_id": "REPLACE_AFTER_CREATION",
+      "migrations_dir": "backend/migrations",
+    },
+  ],
   "r2_buckets": [{ "binding": "DOCUMENTS", "bucket_name": "family-finance-documents" }],
   "vars": {
     "ACCESS_TEAM_DOMAIN": "REPLACE_AFTER_SETUP",
     "ACCESS_AUD": "REPLACE_AFTER_SETUP",
-    "BOOTSTRAP_ADMIN_EMAIL": "REPLACE_AFTER_SETUP"
-  }
+    "BOOTSTRAP_ADMIN_EMAIL": "REPLACE_AFTER_SETUP",
+  },
 }

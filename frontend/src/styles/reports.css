@@ -1,0 +1,59 @@
+.chart {
+  height: 180px;
+  display: flex;
+  align-items: end;
+  gap: 8px;
+  justify-content: space-around;
+  padding: 15px 20px 0;
+}
+.chart-group {
+  min-width: 20px;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 8px;
+  color: #88988d;
+  font-size: 10px;
+}
+.bars {
+  height: 135px;
+  display: flex;
+  align-items: end;
+  gap: 3px;
+}
+.bar {
+  width: 10px;
+  border-radius: 4px 4px 0 0;
+}
+.bar.income,
+.legend i.income {
+  background: #5c9a73;
+}
+.bar.spending,
+.legend i.spending {
+  background: #d2ae75;
+}
+.legend {
+  display: flex;
+  gap: 18px;
+  justify-content: center;
+  padding: 12px 0 20px;
+  color: #849388;
+  font-size: 11px;
+}
+.legend span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.report-note {
+  color: #839387;
+  font-size: 12px;
+  margin: 20px 2px;
+}

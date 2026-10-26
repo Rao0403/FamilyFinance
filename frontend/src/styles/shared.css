@@ -1,0 +1,259 @@
+.page-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 27px;
+}
+.eyebrow {
+  font-size: 11px;
+  letter-spacing: 1.8px;
+  font-weight: 800;
+  color: #648772;
+  margin-bottom: 9px;
+}
+.page-head h1 {
+  font-family: Manrope, sans-serif;
+  font-size: 30px;
+  letter-spacing: -1.1px;
+  line-height: 1.15;
+  margin: 0 0 9px;
+  font-weight: 800;
+}
+.page-head p {
+  margin: 0;
+  color: #718076;
+  font-size: 14px;
+}
+.primary,
+.secondary {
+  border-radius: 9px;
+  border: 1px solid transparent;
+  padding: 10px 15px;
+  font-weight: 700;
+  font-size: 12px;
+  white-space: nowrap;
+  min-height: 38px;
+}
+.primary {
+  background: #245d43;
+  color: white;
+  box-shadow: 0 3px 7px #1f5a3d16;
+}
+.primary:hover {
+  background: #184933;
+}
+.primary:disabled,
+.secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.secondary {
+  background: white;
+  color: #2a513d;
+  border-color: #dbe5dc;
+}
+.secondary:hover {
+  background: #f4f8f4;
+}
+.head-actions {
+  display: flex;
+  gap: 8px;
+}
+.notice {
+  display: flex;
+  gap: 12px;
+  align-items: start;
+  padding: 14px 17px;
+  background: #edf5e3;
+  border: 1px solid #dfeccd;
+  border-radius: 12px;
+  margin-bottom: 25px;
+  color: #456348;
+}
+.notice > span {
+  font-size: 20px;
+}
+.notice strong {
+  font-size: 13px;
+}
+.notice p {
+  font-size: 12px;
+  margin: 3px 0 0;
+  color: #708173;
+}
+.notice.subtle {
+  background: #f2f5f0;
+  border-color: #e4ebe3;
+}
+.notice.small {
+  display: block;
+  font-size: 12px;
+}
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 15px;
+  margin-bottom: 27px;
+}
+.metric {
+  background: #fff;
+  border: 1px solid #e4e8e1;
+  border-radius: 14px;
+  min-height: 150px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 2px 12px #273b2810;
+}
+.metric.hero {
+  background: #245e44;
+  color: white;
+  border-color: #245e44;
+}
+.metric-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: #718076;
+  font-size: 12px;
+  font-weight: 600;
+}
+.hero .metric-top,
+.hero small {
+  color: #cbe4ce;
+}
+.metric-icon {
+  font-size: 21px;
+  color: #94ad98;
+}
+.hero .metric-icon {
+  color: #d8eaa5;
+}
+.metric strong {
+  font-family: Manrope;
+  font-size: 25px;
+  letter-spacing: -1px;
+  white-space: nowrap;
+}
+.metric small {
+  font-size: 11px;
+  color: #8a978d;
+}
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 19px;
+}
+.panel {
+  background: #fff;
+  border: 1px solid #e4e8e1;
+  border-radius: 14px;
+  box-shadow: 0 2px 12px #273b2810;
+  overflow: hidden;
+}
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 21px 23px 17px;
+  gap: 8px;
+}
+.panel h2 {
+  font-family: Manrope;
+  font-size: 15px;
+  margin: 0 0 3px;
+}
+.panel-head p {
+  font-size: 11px;
+  color: #8c988f;
+  margin: 0;
+}
+.text-button {
+  border: 0;
+  background: none;
+  color: #276648;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  padding: 4px;
+}
+.text-button:hover {
+  text-decoration: underline;
+}
+.text-button.danger {
+  color: #b35752;
+}
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  border-top: 1px solid #edf0ea;
+  padding: 14px 22px;
+  min-height: 66px;
+}
+.list-row strong {
+  font-size: 12px;
+}
+.list-row small {
+  display: block;
+  color: #8c988f;
+  font-size: 11px;
+  margin-top: 4px;
+}
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+.round-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: #e7f0e4;
+  color: #417251;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  flex: none;
+}
+.round-icon.out {
+  background: #f8eee6;
+  color: #c47b53;
+}
+.round-icon.in {
+  background: #e7f0e4;
+  color: #417251;
+}
+.negative {
+  color: #ab6452 !important;
+}
+.positive {
+  color: #2c8755 !important;
+}
+.empty {
+  min-height: 190px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #8e9d91;
+  padding: 24px;
+}
+.empty > span {
+  font-size: 30px;
+  color: #aabfb0;
+}
+.empty h3 {
+  color: #4a5d4f;
+  font-size: 14px;
+  margin: 8px 0 4px;
+}
+.empty p {
+  font-size: 12px;
+  max-width: 260px;
+  margin: 0;
+  line-height: 1.5;
+}

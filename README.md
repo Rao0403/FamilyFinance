@@ -1,6 +1,39 @@
 # Family Finance
 
-A private browser-based finance tracker for four family members in India. Each member owns their data and explicitly controls sharing. The [project specification](PROJECT_SPEC.md) records the agreed product rules.
+A private browser-based finance tracker for four family members in India. Each member owns their data and explicitly controls sharing. The [project specification](docs/project-spec.md) records the agreed product rules.
+
+## Repository layout
+
+```text
+frontend/             Browser application and Vite configuration
+  src/
+    app/              Startup, rendering, and event binding
+    pages/            One view per navigation page
+    actions/          Forms and actions grouped by finance area
+    imports/          Document upload, review, and file parsers
+    components/       Shared shell, modal, fields, and page elements
+    api/              HTTP client
+    state/            Browser state and access selectors
+    styles/           Application styles
+    types/            Browser record and callback types
+    utils/            Formatting and error notification
+backend/              Cloudflare Worker application
+  src/
+    worker.ts         HTTP and scheduled event entry point
+    router.ts         Authentication and API route dispatch
+    routes/           API handlers grouped by resource
+    auth/             Identity verification and record permissions
+    services/         Balances, audit, payment dates, and delivery adapters
+    jobs/             Reminder scheduling and document cleanup
+    lib/              Database, validation, JSON, and identifier helpers
+    types/            Worker bindings, records, and route context
+  migrations/         Ordered database migrations
+docs/                 Product specification and code-flow guide
+wrangler.jsonc        Deployment bindings, static assets, and cron schedule
+package.json          Shared dependencies and commands run from the repo root
+```
+
+Start with [the code-flow guide](docs/code-structure.md) to trace a page, API request, document import, or scheduled job.
 
 ## Current implementation
 
@@ -23,6 +56,21 @@ Requirements: Node.js 24 and npm. On Windows PowerShell, use `npm.cmd` if `npm.p
 5. Open the URL Wrangler prints, normally `http://localhost:8787`.
 
 If Wrangler cannot write its config directory in a restricted environment, set `XDG_CONFIG_HOME` to a writable directory in the workspace for that shell session. `.wrangler-config/` is ignored by Git.
+
+Run all commands from the repository root:
+
+| Command                         | Purpose                                                          |
+| ------------------------------- | ---------------------------------------------------------------- |
+| `npm.cmd run dev`               | Frontend development server; forwards `/api` to the local Worker |
+| `npm.cmd run worker:dev`        | Local backend and built frontend assets                          |
+| `npm.cmd run typecheck`         | Check frontend and backend TypeScript                            |
+| `npm.cmd run build`             | Type check and build frontend assets into `dist/`                |
+| `npm.cmd run format`            | Format source, configuration, and developer documentation        |
+| `npm.cmd run format:check`      | Check formatting without changing files                          |
+| `npm.cmd run db:migrate:local`  | Apply `backend/migrations/` to the local database                |
+| `npm.cmd run db:migrate:remote` | Apply the same migrations to the hosted database                 |
+
+For frontend development, run the Worker and Vite in separate terminals. `.dev.vars`, Wrangler configuration, local database state, and build output stay at the root so existing local data and credentials use the same paths.
 
 ## Deployment preparation
 
@@ -51,7 +99,7 @@ Keep backups outside this repository in an encrypted location accessible only to
 
 ```powershell
 New-Item -ItemType Directory -Path 'D:\SecureFamilyFinanceBackup' -Force
-npm.cmd exec wrangler d1 export family-finance --remote --output 'D:\SecureFamilyFinanceBackup\family-finance.sql'
+npm.cmd exec -- wrangler d1 export family-finance --remote --output 'D:\SecureFamilyFinanceBackup\family-finance.sql'
 rclone copy r2:family-finance-documents 'D:\SecureFamilyFinanceBackup\documents'
 ```
 
@@ -63,4 +111,4 @@ Cloudflare Access checks sign-in at the edge. The Worker independently verifies 
 
 An owner may delete their own financial records in Settings after typing a confirmation phrase. The database removes the records in one transaction and queues source files for R2 deletion. Failed file deletions are retried by the daily scheduled Worker. Membership and the deletion audit event remain; a backup created before deletion must be managed separately by the backup administrator.
 
-See [Cloudflare Access authorization](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/) for the signed identity token and the [project spec](PROJECT_SPEC.md) for the intended access rules.
+See [Cloudflare Access authorization](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/) for the signed identity token and the [project spec](docs/project-spec.md) for the intended access rules.
