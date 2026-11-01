@@ -18,6 +18,8 @@ export const state: {
     kind: string;
     rows: Item[];
     raw: string;
+    warnings: string[];
+    statement?: { closing_date: string };
     documentId?: string;
   };
 } = {

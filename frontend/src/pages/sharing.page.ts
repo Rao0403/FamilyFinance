@@ -30,6 +30,7 @@ export function sharing() {
     ...state.accounts.map((x) => ({ ...x, resource_type: "account" })),
     ...state.investments.map((x) => ({ ...x, resource_type: "investment" })),
     ...state.payments.map((x) => ({ ...x, resource_type: "payment", name: x.title })),
+    ...state.documents.map((x) => ({ ...x, resource_type: "document" })),
   ].filter(owned);
   return /* HTML */ `
     ${sectionHeader(
@@ -47,7 +48,10 @@ export function sharing() {
         <div class="panel-head">
           <div>
             <h2>Share a record</h2>
-            <p>Account sharing includes transactions and statements</p>
+            <p>
+              Account sharing includes transactions and statements. A shared document gives access
+              to its entire contents.
+            </p>
           </div>
         </div>
         ${

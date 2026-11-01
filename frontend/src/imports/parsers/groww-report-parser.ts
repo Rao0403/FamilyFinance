@@ -1,36 +1,118 @@
 import type { Item } from "../../types/finance-record";
-import { paise, today } from "../../utils/formatters";
 import { parseCsv } from "./csv-parser";
+import { parseDate } from "./pdf-table";
 
-export function suggestInvestmentRows(raw: string): Item[] {
-  const table = parseCsv(raw);
-  if (table.length < 2) return [];
-  const headings = table[0].map((h) => h.toLowerCase().replace(/[^a-z0-9]/g, ""));
-  const find = (...names: string[]) =>
-    headings.findIndex((h) => names.some((name) => h.includes(name)));
-  const nameCol = find("schemename", "instrumentname", "stockname", "securityname", "fundname");
-  const investedCol = find(
-    "investedamount",
-    "investedvalue",
-    "totalinvestment",
-    "costvalue",
-    "buyvalue",
-  );
-  const valueCol = find("currentvalue", "marketvalue", "presentvalue");
-  const qtyCol = find("units", "quantity");
-  const symbolCol = find("isin", "symbol", "ticker");
-  if (nameCol < 0 || investedCol < 0 || valueCol < 0) return [];
-  return table
-    .slice(1)
-    .filter((row) => row[nameCol]?.trim())
-    .map((row, i) => ({
-      name: row[nameCol].trim(),
-      symbol: symbolCol >= 0 ? row[symbolCol]?.trim() : "",
-      type: /fund|scheme/i.test(row[nameCol]) ? "mutual_fund" : "stock",
-      quantity: qtyCol >= 0 ? row[qtyCol] : "",
-      invested_paise: paise((row[investedCol] || "0").replace(/[^\d.-]/g, "")),
-      value_paise: paise((row[valueCol] || "0").replace(/[^\d.-]/g, "")),
-      as_of: today(),
-      source_ref: `csv-row-${i + 2}`,
-    }));
+type Sheet = { sheet: string; data: unknown[][] };
+export type InvestmentSuggestions = { rows: Item[]; warnings: string[] };
+
+const text = (value: unknown) => (value == null ? "" : String(value).trim());
+const heading = (value: unknown) =>
+  text(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+const find = (headers: string[], names: string[]) =>
+  headers.findIndex((header) => names.includes(header));
+const nameHeaders = ["schemename", "instrumentname", "stockname", "securityname", "fundname"];
+const investedHeaders = [
+  "investedvalue",
+  "investedamount",
+  "totalinvestment",
+  "costvalue",
+  "buyvalue",
+];
+const valueHeaders = ["currentvalue", "marketvalue", "presentvalue"];
+
+function money(value: unknown): number | null {
+  if (value == null || text(value) === "") return null;
+  const clean = text(value).replace(/[₹,\s]/g, "");
+  if (!/^-?\d+(?:\.\d{1,2})?$/.test(clean)) return null;
+  const amount = Math.round(Number(clean) * 100);
+  return Number.isSafeInteger(amount) ? amount : null;
+}
+
+function reportDate(rows: unknown[][], end: number): string {
+  const labels = rows.slice(0, end).flat().map(text);
+  for (const label of labels) {
+    const match = label.match(/holdings\s+as\s+on\s+(\d{4}-\d{2}-\d{2})/i);
+    if (match) return parseDate(match[1]) || "";
+  }
+  return "";
+}
+
+export function parseGrowwSheets(sheets: Sheet[]): InvestmentSuggestions {
+  const rows: Item[] = [];
+  const warnings: string[] = [];
+  let tables = 0;
+  for (const sheet of sheets) {
+    const table = sheet.data;
+    const headerIndex = table.findIndex((row) => {
+      const headers = row.map(heading);
+      return (
+        find(headers, nameHeaders) >= 0 &&
+        find(headers, investedHeaders) >= 0 &&
+        find(headers, valueHeaders) >= 0
+      );
+    });
+    if (headerIndex < 0) continue;
+    tables++;
+    const headers = table[headerIndex].map(heading);
+    const col = (...names: string[]) => find(headers, names);
+    const date = reportDate(table, headerIndex);
+    if (!date && col("asof", "valuationdate", "date") < 0)
+      warnings.push(`Sheet ${sheet.sheet}: enter the valuation date shown in the report.`);
+    for (let index = headerIndex + 1; index < table.length; index++) {
+      const cells = table[index] || [];
+      const name = text(cells[col(...nameHeaders)]);
+      if (!name || /^(grand\s+)?total\b/i.test(name)) continue;
+      const invested = money(cells[col(...investedHeaders)]);
+      const current = money(cells[col(...valueHeaders)]);
+      const identifierColumn = col("foliono", "isin", "symbol", "ticker");
+      const folio = identifierColumn < 0 ? "" : text(cells[identifierColumn]);
+      const dateCell = cells[col("asof", "valuationdate", "date")];
+      const asOf =
+        date ||
+        (dateCell instanceof Date
+          ? dateCell.toISOString().slice(0, 10)
+          : parseDate(text(dateCell))) ||
+        "";
+      if (invested === null || current === null)
+        warnings.push(
+          `Sheet ${sheet.sheet}, row ${index + 1}: check the invested and current values.`,
+        );
+      if (!asOf && col("asof", "valuationdate", "date") >= 0)
+        warnings.push(`Sheet ${sheet.sheet}, row ${index + 1}: enter a valid valuation date.`);
+      rows.push({
+        name,
+        symbol: folio,
+        type:
+          headers.includes("schemename") || headers.includes("fundname")
+            ? "mutual_fund"
+            : headers.includes("stockname")
+              ? "stock"
+              : "",
+        quantity: col("units", "quantity") < 0 ? "" : text(cells[col("units", "quantity")]),
+        invested_paise: invested,
+        value_paise: current,
+        as_of: asOf,
+        source_ref: `${sheet.sheet}!row ${index + 1}`,
+      });
+    }
+  }
+  if (!tables)
+    warnings.push(
+      "No supported holdings table was found. Check the file or add holdings manually.",
+    );
+  return { rows, warnings };
+}
+
+export async function suggestInvestmentRows(file: File): Promise<InvestmentSuggestions> {
+  if (/\.xlsx$/i.test(file.name)) {
+    const { default: readXlsxFile } = await import("read-excel-file/browser");
+    const sheets = await readXlsxFile(file);
+    return parseGrowwSheets(sheets as unknown as Sheet[]);
+  }
+  if (/\.(csv|txt)$/i.test(file.name) || /^(text\/csv|text\/plain)$/.test(file.type)) {
+    return parseGrowwSheets([{ sheet: "CSV", data: parseCsv(await file.text()) }]);
+  }
+  return { rows: [], warnings: ["Select a Groww .xlsx or .csv holdings report."] };
 }

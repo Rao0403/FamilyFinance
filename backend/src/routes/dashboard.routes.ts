@@ -24,7 +24,7 @@ export async function handleDashboardRoutes(context: RouteContext): Promise<Resp
         .first<{ value_paise: number; as_of: string }>();
       investmentValue += latest?.value_paise ?? Number(investment.principal_paise ?? 0);
       investment.value_paise = latest?.value_paise ?? investment.principal_paise ?? 0;
-      investment.as_of = latest?.as_of ?? investment.start_date;
+      investment.as_of = latest?.as_of ?? investment.fd_report_date ?? investment.start_date;
     }
     const ids = accounts.map((a) => a.id);
     const month = new Date()

@@ -1,28 +1,89 @@
 import type { Item } from "../../types/finance-record";
+import type { PdfLine } from "./pdf-text-extractor";
+import { columns, lineText, parseAmount, parseDate, rightEdge } from "./pdf-table";
 
-export function suggestRows(raw: string): Item[] {
-  const lines = raw.split(/\r?\n/);
-  const result: Item[] = [];
+export function suggestRows(lines: PdfLine[]): {
+  rows: Item[];
+  warnings: string[];
+  statement: { closing_date: string };
+} {
+  const rows: Item[] = [];
+  let anchors: ReturnType<typeof columns> = null;
+  let skipped = 0;
   for (const line of lines) {
-    const match = line.match(/\b(\d{2})[\/-](\d{2})[\/-](\d{4})\b/);
-    if (!match) continue;
-    const date = `${match[3]}-${match[2]}-${match[1]}`;
-    const numbers = [...line.matchAll(/(?:^|\s)(?:₹\s*)?([\d,]+\.\d{2})(?=\s|$)/g)].map((m) =>
-      Number(m[1].replace(/,/g, "")),
-    );
-    if (!numbers.length) continue;
-    const description = line
-      .slice(match.index! + match[0].length)
-      .replace(/(?:₹\s*)?[\d,]+\.\d{2}/g, "")
-      .trim();
-    result.push({
-      date,
-      description,
-      amount_paise: -Math.round(numbers[0] * 100),
-      balance_paise: numbers.length > 1 ? Math.round(numbers.at(-1)! * 100) : null,
+    const header = columns(line, {
+      date: /\bdate\b/i,
+      details: /transaction\s+details/i,
+      debit: /\bdebits?\b/i,
+      credit: /\bcredits?\b/i,
+      balance: /\bbalance\b/i,
+    });
+    if (header) {
+      anchors = header;
+      continue;
+    }
+    if (!anchors) continue;
+    const dateLimit = (anchors.date.end + anchors.details.start) / 2;
+    const dateItem = line.items.find((item) => item.x < dateLimit && parseDate(item.text) !== null);
+    if (!dateItem) continue;
+    const amounts: { debit: number[]; credit: number[]; balance: number[] } = {
+      debit: [],
+      credit: [],
+      balance: [],
+    };
+    const description: string[] = [];
+    const detailBoundary = (anchors.details.end + anchors.debit.end) / 2;
+    const debitBoundary = (anchors.debit.end + anchors.credit.end) / 2;
+    const creditBoundary = (anchors.credit.end + anchors.balance.end) / 2;
+    for (const item of line.items) {
+      if (item === dateItem) continue;
+      const amount = parseAmount(item.text);
+      const edge = rightEdge(item);
+      if (amount !== null && edge >= detailBoundary) {
+        const field = edge < debitBoundary ? "debit" : edge < creditBoundary ? "credit" : "balance";
+        amounts[field].push(amount);
+      } else if (edge < detailBoundary && item.x >= dateItem.x) description.push(item.text.trim());
+    }
+    if (amounts.debit.length > 1 || amounts.credit.length > 1 || amounts.balance.length > 1) {
+      skipped++;
+      continue;
+    }
+    const debit = amounts.debit[0] === 0 && amounts.credit[0] ? undefined : amounts.debit[0];
+    const credit = amounts.credit[0] === 0 && amounts.debit[0] ? undefined : amounts.credit[0];
+    if ((debit === undefined) === (credit === undefined)) {
+      skipped++;
+      continue;
+    }
+    if ((debit !== undefined && debit < 0) || (credit !== undefined && credit < 0)) {
+      skipped++;
+      continue;
+    }
+    rows.push({
+      date: parseDate(dateItem.text),
+      description: description.join(" ").trim(),
+      amount_paise: debit !== undefined ? -debit : credit,
+      balance_paise: amounts.balance[0] ?? null,
       category: "Uncategorized",
-      kind: "expense",
+      kind: debit !== undefined ? "expense" : "income",
+      source_ref: `page ${line.page}, line ${line.line}`,
     });
   }
-  return result;
+  const warnings = [
+    "Check every date, description, debit, credit and running balance against the statement before importing.",
+  ];
+  if (!anchors)
+    warnings.push(
+      "The account activity columns could not be identified. Add rows manually or use a text PDF.",
+    );
+  if (skipped)
+    warnings.push(
+      `${skipped} dated line(s) could not be classified safely and were omitted. Add any missing transactions manually.`,
+    );
+  const period = lines
+    .map(lineText)
+    .join("\n")
+    .match(
+      /for\s+period\s*:\s*\d{1,2}\s+[A-Za-z]{3}\s+\d{4}\s*[-–]\s*(\d{1,2}\s+[A-Za-z]{3}\s+\d{4})/i,
+    );
+  return { rows, warnings, statement: { closing_date: period ? parseDate(period[1]) || "" : "" } };
 }

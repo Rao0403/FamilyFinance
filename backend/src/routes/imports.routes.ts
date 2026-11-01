@@ -4,6 +4,7 @@ import { now, uid } from "../lib/identifiers";
 import { asDate, asMoney, asText } from "../lib/validation";
 import { accountBalanceStatement } from "../services/account-balances";
 import { audit } from "../services/audit-log";
+import { commitFixedDeposits, rollbackFixedDeposits } from "../services/fixed-deposit-import";
 import type { RecordRow } from "../types/records";
 import type { RouteContext } from "../types/route-context";
 
@@ -29,13 +30,34 @@ export async function handleImportsRoutes(context: RouteContext): Promise<Respon
     if (rows.length > 1000) return fail(400, "Import limit is 1000 rows");
     let imported = 0,
       duplicates = 0;
-    if (batch.type === "account" && batch.target_id) {
+    if (batch.type === "fd") {
+      imported = await commitFixedDeposits(env, member, path[1], String(batch.id), rows);
+    } else if (batch.type === "account" && batch.target_id) {
+      if (!data.statement || typeof data.statement !== "object" || Array.isArray(data.statement))
+        return fail(400, "Enter the statement end date and ending balance");
+      const statement = data.statement as RecordRow;
+      const closingDate = asDate(statement.closing_date),
+        closingBalance = asMoney(statement.balance_paise);
+      const conflict = await env.DB.prepare(
+        "SELECT id FROM statement_balances WHERE account_id=? AND closing_date=? AND balance_paise<>? LIMIT 1",
+      )
+        .bind(batch.target_id, closingDate, closingBalance)
+        .first();
+      if (conflict)
+        return fail(
+          409,
+          "A statement for this end date already has a different ending balance. Check both statements.",
+        );
       const statements: D1PreparedStatement[] = [];
+      const transactionIndexes: number[] = [];
       for (const row of rows) {
         const date = asDate(row.date),
           amount = asMoney(row.amount_paise),
           description = asText(row.description, 500);
+        if (!description || date > closingDate)
+          return fail(400, "Check the transaction descriptions and statement end date");
         const fingerprint = `${date}|${amount}|${description}|${row.balance_paise ?? ""}`;
+        transactionIndexes.push(statements.length);
         statements.push(
           env.DB.prepare(
             "INSERT OR IGNORE INTO transactions (id,owner_id,account_id,date,description,amount_paise,category,kind,balance_paise,document_id,source_ref,fingerprint) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
@@ -54,7 +76,17 @@ export async function handleImportsRoutes(context: RouteContext): Promise<Respon
             fingerprint,
           ),
         );
+        statements.push(
+          env.DB.prepare(
+            "INSERT OR IGNORE INTO transaction_import_sources (transaction_id,document_id,source_ref) SELECT id,?,? FROM transactions WHERE account_id=? AND fingerprint=?",
+          ).bind(path[1], asText(row.source_ref) || null, batch.target_id, fingerprint),
+        );
       }
+      statements.push(
+        env.DB.prepare(
+          "INSERT INTO statement_balances (id,account_id,document_id,closing_date,balance_paise) VALUES (?,?,?,?,?)",
+        ).bind(uid(), batch.target_id, path[1], closingDate, closingBalance),
+      );
       statements.push(
         env.DB.prepare("UPDATE imports SET status='committed',committed_at=? WHERE id=?").bind(
           now(),
@@ -65,9 +97,7 @@ export async function handleImportsRoutes(context: RouteContext): Promise<Respon
         env.DB.prepare("UPDATE documents SET status='imported' WHERE id=?").bind(path[1]),
       );
       const results = await env.DB.batch(statements);
-      imported = results
-        .slice(0, rows.length)
-        .reduce((sum, result) => sum + result.meta.changes, 0);
+      imported = transactionIndexes.reduce((sum, index) => sum + results[index].meta.changes, 0);
       duplicates = rows.length - imported;
       await (await accountBalanceStatement(env, String(batch.target_id))).run();
     } else if (batch.type === "investment") {
@@ -88,6 +118,7 @@ export async function handleImportsRoutes(context: RouteContext): Promise<Respon
       );
       const statements: D1PreparedStatement[] = [],
         snapshotIndexes: number[] = [];
+      const seen = new Set<string>();
       for (const row of rows) {
         const name = asText(row.name),
           type = asText(row.type),
@@ -98,6 +129,10 @@ export async function handleImportsRoutes(context: RouteContext): Promise<Respon
         const invested = asMoney(row.invested_paise),
           current = asMoney(row.value_paise);
         const key = keyFor(type, name, symbol);
+        const snapshotKey = `${key}\u0000${asOf}`;
+        if (seen.has(snapshotKey)) return fail(400, "Duplicate holding and folio on the same date");
+        if (invested < 0 || current < 0) return fail(400, "Investment values cannot be negative");
+        seen.add(snapshotKey);
         let investmentId = known.get(key);
         if (!investmentId) {
           investmentId = uid();
@@ -147,9 +182,25 @@ export async function handleImportsRoutes(context: RouteContext): Promise<Respon
       .bind(path[1], member.id)
       .first<RecordRow>();
     if (!batch) return fail(404, "Committed import not found");
-    await env.DB.prepare("DELETE FROM transactions WHERE document_id=? AND owner_id=?")
-      .bind(path[1], member.id)
-      .run();
+    if (batch.type === "fd") {
+      await rollbackFixedDeposits(env, member, path[1], String(batch.id));
+      await audit(env, member, "rollback", "import", String(batch.id));
+      return json({ ok: true });
+    }
+    await env.DB.batch([
+      env.DB.prepare(
+        "DELETE FROM statement_balances WHERE document_id=? AND account_id IN (SELECT id FROM accounts WHERE owner_id=?)",
+      ).bind(path[1], member.id),
+      env.DB.prepare(
+        "DELETE FROM transaction_import_sources WHERE document_id=? AND transaction_id IN (SELECT id FROM transactions WHERE owner_id=?)",
+      ).bind(path[1], member.id),
+      env.DB.prepare(
+        "UPDATE transactions SET document_id=(SELECT document_id FROM transaction_import_sources WHERE transaction_id=transactions.id LIMIT 1),source_ref=(SELECT source_ref FROM transaction_import_sources WHERE transaction_id=transactions.id LIMIT 1) WHERE document_id=? AND owner_id=? AND EXISTS (SELECT 1 FROM transaction_import_sources WHERE transaction_id=transactions.id)",
+      ).bind(path[1], member.id),
+      env.DB.prepare(
+        "DELETE FROM transactions WHERE document_id=? AND owner_id=? AND NOT EXISTS (SELECT 1 FROM transaction_import_sources WHERE transaction_id=transactions.id)",
+      ).bind(path[1], member.id),
+    ]);
     await env.DB.prepare(
       "DELETE FROM investment_snapshots WHERE document_id=? AND investment_id IN (SELECT id FROM investments WHERE owner_id=?)",
     )

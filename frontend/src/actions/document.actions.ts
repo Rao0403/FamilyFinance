@@ -1,9 +1,7 @@
 import { api, post } from "../api/finance-api";
 import { showPreview } from "../imports/document-review";
 import { upload } from "../imports/document-upload";
-import { suggestRows } from "../imports/parsers/bank-statement-parser";
-import { suggestInvestmentRows } from "../imports/parsers/groww-report-parser";
-import { extractText } from "../imports/parsers/pdf-text-extractor";
+import { parseDocument } from "../imports/parse-document";
 import { state } from "../state/finance-state";
 import type { RefreshApplication } from "../types/finance-record";
 
@@ -35,13 +33,12 @@ export async function handleDocumentAction(
       file.type === "application/pdf"
         ? window.prompt("PDF password, if required (leave blank if none)") || ""
         : "";
-    const raw = await extractText(file, password);
+    const result = await parseDocument(file, metadata.type, password);
     state.preview = {
       file,
       target: metadata.target_id || "",
       kind: metadata.type,
-      raw,
-      rows: metadata.type === "account" ? suggestRows(raw) : suggestInvestmentRows(raw),
+      ...result,
       documentId: id,
     };
     showPreview(load);

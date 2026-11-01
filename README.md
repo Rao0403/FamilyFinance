@@ -39,8 +39,9 @@ Start with [the code-flow guide](docs/code-structure.md) to trace a page, API re
 
 - Cloudflare Worker API, D1 database, private R2 document storage, and a responsive browser UI.
 - Individual membership with admin deactivation/reactivation, owner-controlled view/edit grants, and account sharing that includes transactions and linked statements.
-- Indian Bank PDF text extraction into an editable review table. It does not auto-save extracted transactions; the uploader must confirm them. Password-protected text PDFs can be opened with a password used only in the browser. Scanned PDFs still need OCR, and exact statement mapping requires a redacted sample.
-- CSV investment import with a review table, manual stock/mutual-fund snapshots, and FD records. Groww column mapping is provisional until a redacted export is supplied.
+- Indian Bank statement PDFs and term deposit summary PDFs are read in the browser into editable review tables. The uploader checks the suggested records and confirms a statement's ending balance before totals change. Overlapping statement imports retain their source links when an import is undone. Password-protected text PDFs can be opened with a password used only in the browser. Scanned PDFs still need OCR.
+- Groww `.xlsx` holdings reports, and compatible CSV files, are read in the browser. The importer identifies the holdings table below the summary and preserves folio, units and the report's valuation date for review. A multi-deposit FD report is private unless its owner explicitly shares the entire document.
+- The provided screenshots show headings but hide PDF data rows. PDF and spreadsheet importers have been checked with fictional examples; actual files still need private, local validation for differences in their rows, text layout, and formats before family use.
 - Payment schedules with optional transaction matching, email and SMS reminder jobs, source documents, spending, investment allocation and net worth checkpoint reports, personal JSON export, and owner-initiated financial data deletion.
 
 **No live financial data or provider credentials are in this repository.** The deployment is not configured yet. Do not upload real statements to the local development database if other people can access that computer.
@@ -65,6 +66,7 @@ Run all commands from the repository root:
 | `npm.cmd run worker:dev`        | Local backend and built frontend assets                          |
 | `npm.cmd run typecheck`         | Check frontend and backend TypeScript                            |
 | `npm.cmd run build`             | Type check and build frontend assets into `dist/`                |
+| `npm.cmd run test:imports`      | Run parser and review validation checks with fictional data      |
 | `npm.cmd run format`            | Format source, configuration, and developer documentation        |
 | `npm.cmd run format:check`      | Check formatting without changing files                          |
 | `npm.cmd run db:migrate:local`  | Apply `backend/migrations/` to the local database                |

@@ -63,6 +63,15 @@ export async function handleProfileRoutes(context: RouteContext): Promise<Respon
       env.DB.prepare(
         "DELETE FROM investment_snapshots WHERE investment_id IN (SELECT id FROM investments WHERE owner_id=?)",
       ).bind(member.id),
+      env.DB.prepare(
+        "DELETE FROM fd_report_observations WHERE investment_id IN (SELECT id FROM investments WHERE owner_id=?)",
+      ).bind(member.id),
+      env.DB.prepare(
+        "DELETE FROM statement_balances WHERE account_id IN (SELECT id FROM accounts WHERE owner_id=?)",
+      ).bind(member.id),
+      env.DB.prepare(
+        "DELETE FROM transaction_import_sources WHERE transaction_id IN (SELECT id FROM transactions WHERE owner_id=?)",
+      ).bind(member.id),
       env.DB.prepare("DELETE FROM transactions WHERE owner_id=?").bind(member.id),
       env.DB.prepare("DELETE FROM imports WHERE owner_id=?").bind(member.id),
       env.DB.prepare("DELETE FROM payments WHERE owner_id=?").bind(member.id),

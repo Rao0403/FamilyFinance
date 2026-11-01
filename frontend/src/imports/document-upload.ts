@@ -6,9 +6,7 @@ import { state } from "../state/finance-state";
 import type { RefreshApplication } from "../types/finance-record";
 import { esc } from "../utils/formatters";
 import { showPreview } from "./document-review";
-import { suggestRows } from "./parsers/bank-statement-parser";
-import { suggestInvestmentRows } from "./parsers/groww-report-parser";
-import { extractText } from "./parsers/pdf-text-extractor";
+import { parseDocument } from "./parse-document";
 
 export function upload(prefillId: string | undefined, load: RefreshApplication) {
   const renderAccountOption = (a: Item) => /* HTML */ `
@@ -33,7 +31,8 @@ export function upload(prefillId: string | undefined, load: RefreshApplication) 
         Document type
         <select name="kind">
           <option value="account">Indian Bank statement</option>
-          <option value="investment">Groww report or FD receipt</option>
+          <option value="investment">Groww holdings report</option>
+          <option value="fd">Indian Bank term deposit summary</option>
           <option value="other">Other document</option>
         </select>
       </label>
@@ -45,7 +44,7 @@ export function upload(prefillId: string | undefined, load: RefreshApplication) 
         </select>
       </label>
       <label>
-        Investment (optional, for FD receipts)
+        Investment (optional, to retain a document for one investment)
         <select name="investment_target">
           <option value="">Portfolio report / no single investment</option>
           ${holdings.map(renderInvestmentOption).join("")}
@@ -53,7 +52,7 @@ export function upload(prefillId: string | undefined, load: RefreshApplication) 
       </label>
       <label>
         File
-        <input type="file" name="file" accept=".pdf,.csv,.txt,.png,.jpg,.jpeg" required />
+        <input type="file" name="file" accept=".pdf,.xlsx,.csv,.txt,.png,.jpg,.jpeg" required />
       </label>
       ${field("PDF password (if needed)", "pdf_password", "password", false)}
       <p class="muted">
@@ -64,21 +63,22 @@ export function upload(prefillId: string | undefined, load: RefreshApplication) 
     async (f) => {
       const file = (f.querySelector<HTMLInputElement>('input[name="file"]')!.files || [])[0];
       if (!file) throw new Error("Select a file");
+      if (!file.size || file.size > 15 * 1024 * 1024)
+        throw new Error("File must be 1 byte to 15 MB");
       const kind = value(f, "kind"),
-        target = kind === "account" ? value(f, "account_target") : value(f, "investment_target");
+        target =
+          kind === "account"
+            ? value(f, "account_target")
+            : kind === "investment"
+              ? value(f, "investment_target")
+              : "";
       if (kind === "account" && !target) throw new Error("Add your bank account first");
-      const raw = await extractText(file, value(f, "pdf_password"));
+      const result = await parseDocument(file, kind, value(f, "pdf_password"));
       state.preview = {
         file,
         target,
         kind,
-        raw,
-        rows:
-          kind === "account"
-            ? suggestRows(raw)
-            : kind === "investment"
-              ? suggestInvestmentRows(raw)
-              : [],
+        ...result,
       };
       state.tab = "Documents";
       setTimeout(() => showPreview(load), 50);

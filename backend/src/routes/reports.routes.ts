@@ -32,6 +32,13 @@ export async function handleReportsRoutes(context: RouteContext): Promise<Respon
           ).bind(...ids),
         )
       : [];
+    const statements = ids.length
+      ? await readAll<{ account_id: string; date: string; balance_paise: number }>(
+          env.DB.prepare(
+            `SELECT account_id,closing_date AS date,balance_paise FROM statement_balances WHERE account_id IN (${ids.map(() => "?").join(",")})`,
+          ).bind(...ids),
+        )
+      : [];
     const snapshots = investments.length
       ? await readAll<{ investment_id: string; as_of: string; value_paise: number }>(
           env.DB.prepare(
@@ -60,6 +67,7 @@ export async function handleReportsRoutes(context: RouteContext): Promise<Respon
     const eventMonths = new Set<string>([
       ...accounts.map((a) => a.opening_date?.slice(0, 7)).filter((x): x is string => !!x),
       ...rows.filter((r) => r.balance_paise != null).map((r) => r.date.slice(0, 7)),
+      ...statements.map((s) => s.date.slice(0, 7)),
       ...snapshots.map((s) => s.as_of.slice(0, 7)),
       ...investments
         .filter((i) => i.type === "fd")
@@ -76,9 +84,16 @@ export async function handleReportsRoutes(context: RouteContext): Promise<Respon
         stale = false;
       for (const account of accounts) {
         const eligible = rows.filter((r) => r.account_id === account.id && r.date <= end);
-        const statement = eligible
-          .filter((r) => r.balance_paise != null)
-          .sort((a, b) => b.date.localeCompare(a.date))[0];
+        const accountStatements = statements.filter((s) => s.account_id === account.id);
+        const statement =
+          accountStatements
+            .filter((s) => s.date <= end)
+            .sort((a, b) => b.date.localeCompare(a.date))[0] ??
+          (accountStatements.length === 0
+            ? eligible
+                .filter((r) => r.balance_paise != null)
+                .sort((a, b) => b.date.localeCompare(a.date))[0]
+            : undefined);
         const baselineDate = statement?.date ?? account.opening_date;
         if (!baselineDate || baselineDate > end) {
           missing = true;

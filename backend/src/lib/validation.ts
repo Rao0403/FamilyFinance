@@ -3,6 +3,7 @@ export const asText = (v: unknown, max = 300) =>
     .trim()
     .slice(0, max);
 export const asMoney = (v: unknown) => {
+  if (v == null || v === "") throw new Error("Amount must be an integer number of paise");
   const n = Number(v);
   if (!Number.isSafeInteger(n)) throw new Error("Amount must be an integer number of paise");
   return n;

@@ -24,7 +24,7 @@ export function documentsView() {
             `
           : ""
       }${
-        owned(d) && d.status === "uploaded" && ["account", "investment"].includes(d.type)
+        owned(d) && d.status === "uploaded" && ["account", "investment", "fd"].includes(d.type)
           ? /* HTML */ `
               <button class="text-button" data-action="reprocess" data-id="${esc(d.id)}">
                 Review import

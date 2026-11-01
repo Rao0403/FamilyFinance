@@ -1,6 +1,6 @@
 # Family Finance Tracker — project specification (draft)
 
-Status: **Implementation in progress.** Document parsers still require redacted family samples, and hosted services are not configured.
+Status: **Implementation in progress.** The document layouts were shared as screenshots, but their data rows were hidden. Importers need validation on actual documents privately, and hosted services are not configured.
 
 ## 1. Purpose
 
@@ -16,7 +16,7 @@ The product should be built as one complete application against this specificati
 - Spending, investments, upcoming payments, and net worth are core areas. Loan management is outside the current scope because there are no loans to track.
 - Investment types: listed stocks, mutual funds, and fixed deposits (FDs).
 - Data is refreshed mainly by uploading source documents. Original files are retained for later reference.
-- Indian Bank statements currently available to the family are PDFs covering the last 30 days. Groww report format remains to be confirmed; periodic Groww uploads will refresh investment data.
+- Indian Bank statements currently available to the family are PDFs covering the last 30 days. The family also has an Indian Bank term deposit summary PDF and a Groww mutual fund holdings report in `.xlsx` format; periodic Groww uploads will refresh investment data.
 - Reminders are delivered by email and SMS, subject to each owner's notification settings.
 - The family will mainly use the application in a web browser so it works on iOS, Android, and computers without separate native apps. The layout should work well on phones.
 
@@ -52,7 +52,7 @@ Editing another person's records is not allowed unless the owner explicitly gran
 ### Investments
 
 - Track stocks and mutual funds by owner, instrument, quantity/units, cost or invested amount, and latest uploaded valuation with its date.
-- Import supported Groww reports after the actual file layout is inspected. Show an import preview and match incoming positions with existing holdings; prevent double counting across repeated uploads.
+- Import supported Groww reports after the actual file layout is inspected. The holdings table appears below a personal details and summary section, and includes the as-of date, scheme, folio, units, invested value and current value. Show an import preview and match incoming positions with existing holdings; prevent double counting across repeated uploads.
 - Preserve historical uploads so portfolio values and contributions can be viewed over time. Clearly distinguish invested amount, current value, and gain/loss. Values from uploaded reports are snapshots, not live prices.
 - Track each FD's bank, principal, interest rate, start date, maturity date, maturity amount (if available), and document. Show principal and maturity amount separately. Use a current value in net worth only when that value is available or an agreed calculation rule has been defined; otherwise use principal and label it.
 
@@ -114,8 +114,8 @@ Sources: [Cloudflare Workers pricing](https://developers.cloudflare.com/workers/
 
 ## 9. Inputs needed to finish and deploy
 
-1. **Groww sample:** Confirm the available report formats and which exports cover stocks and mutual funds. A redacted sample file is needed to specify exact import columns and duplicate rules.
-2. **FD documents:** Confirm whether the available files are text PDFs, scanned PDFs, or images. A redacted sample is needed for exact extraction fields.
+1. **Groww reports:** The screenshot confirms an `.xlsx` mutual fund holdings report. Validate the importer privately on actual files, and confirm what report is available for stocks.
+2. **Bank and FD documents:** Screenshots confirm the statement and term deposit summary headings, but the rows are hidden. Validate parsing privately on actual PDFs and check whether any files require OCR.
 3. **Hosting:** Cloudflare is the current implementation target. Configure a Cloudflare account, Access, D1, R2, and independent backups before deployment.
 4. **Sharing detail:** Access lasts until the owner revokes it. An account grant includes its transactions and statement files.
 5. **Reminders:** The default lead time is three days and only the payment owner receives email or SMS. MSG91 sender registration, approved template, and provider credentials are needed for live SMS delivery.

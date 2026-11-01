@@ -4,6 +4,7 @@ import { state } from "../state/finance-state";
 import type { RefreshApplication } from "../types/finance-record";
 import { esc, paise, today } from "../utils/formatters";
 import { alertError } from "../utils/notify-error";
+import { prepareReviewedRows } from "./validate-review";
 
 export function showPreview(load: RefreshApplication) {
   const p = state.preview;
@@ -19,13 +20,37 @@ export function showPreview(load: RefreshApplication) {
         </div>
         <button class="icon-button" data-close>×</button>
       </div>
+      ${p.warnings
+        .map(
+          (warning) => /* HTML */ `
+            <p class="notice small">${esc(warning)}</p>
+          `,
+        )
+        .join("")}
       ${
         p.kind === "account"
           ? /* HTML */ `
               <p class="notice small">
-                Suggestions are approximate until we have an Indian Bank sample. Check debit/credit
-                signs and balances carefully.
+                Check debit and credit signs, running balances, and missing transactions.
               </p>
+              <div class="stack-form">
+                <label>
+                  Statement end date
+                  <input
+                    id="statement-closing-date"
+                    type="date"
+                    value="${esc(p.statement?.closing_date || "")}"
+                  />
+                </label>
+                <label>
+                  Ending balance shown on statement (₹)
+                  <input id="statement-closing-balance" type="number" step="0.01" />
+                </label>
+                <p class="muted">
+                  Confirm both values from the statement’s account summary. They determine the
+                  account balance.
+                </p>
+              </div>
               <div class="review-table">
                 <table>
                   <thead>
@@ -45,8 +70,7 @@ export function showPreview(load: RefreshApplication) {
           : p.kind === "investment" && !p.target
             ? /* HTML */ `
                 <p class="notice small">
-                  Check every holding, type, invested amount and value. Unknown CSV columns can be
-                  entered manually.
+                  Check every holding, folio, units, invested amount, value and valuation date.
                 </p>
                 <div class="review-table">
                   <table>
@@ -54,6 +78,8 @@ export function showPreview(load: RefreshApplication) {
                       <tr>
                         <th>Name</th>
                         <th>Type</th>
+                        <th>Folio / symbol</th>
+                        <th>Units</th>
                         <th>Invested ₹</th>
                         <th>Value ₹</th>
                         <th>As of</th>
@@ -65,19 +91,44 @@ export function showPreview(load: RefreshApplication) {
                 </div>
                 <button class="secondary" id="add-preview" type="button">＋ Add holding</button>
               `
-            : /* HTML */ `
-                <p class="notice small">
-                  This file will be stored privately and linked to the selected investment if
-                  supplied. Enter or update FD figures from Investments.
-                </p>
-                <textarea readonly rows="12" class="raw-preview">
+            : p.kind === "fd"
+              ? /* HTML */ `
+                  <p class="notice small">
+                    Review each deposit. The app stores a masked account reference and a matching
+                    key; the retained original PDF contains its original details.
+                  </p>
+                  <div class="review-table">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>FD account number</th>
+                          <th>Deposit date</th>
+                          <th>Principal ₹</th>
+                          <th>Rate %</th>
+                          <th>Maturity date</th>
+                          <th>Maturity amount ₹</th>
+                          <th>Report date</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody id="preview-body"></tbody>
+                    </table>
+                  </div>
+                  <button class="secondary" id="add-preview" type="button">＋ Add deposit</button>
+                `
+              : /* HTML */ `
+                  <p class="notice small">
+                    This file will be stored privately and linked to the selected investment if
+                    supplied. Enter or update FD figures from Investments.
+                  </p>
+                  <textarea readonly rows="12" class="raw-preview">
 ${esc(p.raw.slice(0, 4000))}</textarea>
-              `
+                `
       }
       <div class="modal-actions">
         <button class="secondary" data-close>Cancel</button>
         <button class="primary" id="confirm-import">
-          ${p.kind === "account" || (p.kind === "investment" && !p.target && p.rows.length) ? "Confirm import" : "Save document"}
+          ${p.rows.length && (p.kind === "account" || p.kind === "fd" || (p.kind === "investment" && !p.target)) ? "Confirm import" : "Save document"}
         </button>
       </div>
     </div>
@@ -97,7 +148,7 @@ ${esc(p.raw.slice(0, 4000))}</textarea>
                   data-key="amount"
                   type="number"
                   step="0.01"
-                  value="${(r.amount_paise / 100).toFixed(2)}"
+                  value="${r.amount_paise == null ? "" : (r.amount_paise / 100).toFixed(2)}"
                 />
               </td>
               <td>
@@ -112,41 +163,113 @@ ${esc(p.raw.slice(0, 4000))}</textarea>
               <td><button class="icon-button" data-remove="${i}">×</button></td>
             </tr>
           `
-        : /* HTML */ `
-            <tr>
-              <td><input data-i="${i}" data-key="name" value="${esc(r.name)}" /></td>
-              <td>
-                <select data-i="${i}" data-key="type">
-                  <option value="stock" ${r.type === "stock" ? "selected" : ""}>Stock</option>
-                  <option value="mutual_fund" ${r.type === "mutual_fund" ? "selected" : ""}>
-                    Mutual fund
-                  </option>
-                </select>
-              </td>
-              <td>
-                <input
-                  data-i="${i}"
-                  data-key="invested"
-                  type="number"
-                  step="0.01"
-                  value="${(r.invested_paise / 100).toFixed(2)}"
-                />
-              </td>
-              <td>
-                <input
-                  data-i="${i}"
-                  data-key="current"
-                  type="number"
-                  step="0.01"
-                  value="${(r.value_paise / 100).toFixed(2)}"
-                />
-              </td>
-              <td><input data-i="${i}" data-key="as_of" type="date" value="${esc(r.as_of)}" /></td>
-              <td><button class="icon-button" data-remove="${i}">×</button></td>
-            </tr>
-          `;
+        : p.kind === "fd"
+          ? /* HTML */ `
+              <tr>
+                <td>
+                  <input
+                    data-i="${i}"
+                    data-key="account_ref"
+                    value="${esc(r.account_ref)}"
+                    autocomplete="off"
+                  />
+                </td>
+                <td>
+                  <input
+                    data-i="${i}"
+                    data-key="start_date"
+                    type="date"
+                    value="${esc(r.start_date)}"
+                  />
+                </td>
+                <td>
+                  <input
+                    data-i="${i}"
+                    data-key="principal"
+                    type="number"
+                    step="0.01"
+                    value="${r.principal_paise == null ? "" : (r.principal_paise / 100).toFixed(2)}"
+                  />
+                </td>
+                <td>
+                  <input
+                    data-i="${i}"
+                    data-key="rate"
+                    type="number"
+                    step="0.01"
+                    value="${r.rate_bps == null ? "" : (r.rate_bps / 100).toFixed(2)}"
+                  />
+                </td>
+                <td>
+                  <input
+                    data-i="${i}"
+                    data-key="maturity_date"
+                    type="date"
+                    value="${esc(r.maturity_date)}"
+                  />
+                </td>
+                <td>
+                  <input
+                    data-i="${i}"
+                    data-key="maturity_amount"
+                    type="number"
+                    step="0.01"
+                    value="${r.maturity_amount_paise == null ? "" : (r.maturity_amount_paise / 100).toFixed(2)}"
+                  />
+                </td>
+                <td>
+                  <input
+                    data-i="${i}"
+                    data-key="report_date"
+                    type="date"
+                    value="${esc(r.report_date)}"
+                  />
+                </td>
+                <td><button class="icon-button" data-remove="${i}">×</button></td>
+              </tr>
+            `
+          : /* HTML */ `
+              <tr>
+                <td><input data-i="${i}" data-key="name" value="${esc(r.name)}" /></td>
+                <td>
+                  <select data-i="${i}" data-key="type">
+                    <option value="" ${!r.type ? "selected" : ""}>Select type</option>
+                    <option value="stock" ${r.type === "stock" ? "selected" : ""}>Stock</option>
+                    <option value="mutual_fund" ${r.type === "mutual_fund" ? "selected" : ""}>
+                      Mutual fund
+                    </option>
+                  </select>
+                </td>
+                <td><input data-i="${i}" data-key="symbol" value="${esc(r.symbol)}" /></td>
+                <td><input data-i="${i}" data-key="quantity" value="${esc(r.quantity)}" /></td>
+                <td>
+                  <input
+                    data-i="${i}"
+                    data-key="invested"
+                    type="number"
+                    step="0.01"
+                    value="${r.invested_paise == null ? "" : (r.invested_paise / 100).toFixed(2)}"
+                  />
+                </td>
+                <td>
+                  <input
+                    data-i="${i}"
+                    data-key="current"
+                    type="number"
+                    step="0.01"
+                    value="${r.value_paise == null ? "" : (r.value_paise / 100).toFixed(2)}"
+                  />
+                </td>
+                <td>
+                  <input data-i="${i}" data-key="as_of" type="date" value="${esc(r.as_of)}" />
+                </td>
+                <td><button class="icon-button" data-remove="${i}">×</button></td>
+              </tr>
+            `;
 
     if (!tableBody) return;
+    const confirmButton = backdrop.querySelector<HTMLButtonElement>("#confirm-import")!;
+    confirmButton.textContent = p.rows.length ? "Confirm import" : "Save document";
     tableBody.innerHTML = p.rows.map(renderReviewRow).join("");
     tableBody
       .querySelectorAll<HTMLInputElement | HTMLSelectElement>("input,select")
@@ -154,10 +277,16 @@ ${esc(p.raw.slice(0, 4000))}</textarea>
         input.addEventListener("change", () => {
           const row = p.rows[Number(input.dataset.i)],
             key = input.dataset.key!;
-          if (key === "amount") row.amount_paise = paise(input.value);
+          if (key === "amount") row.amount_paise = input.value ? paise(input.value) : null;
           else if (key === "balance") row.balance_paise = input.value ? paise(input.value) : null;
-          else if (key === "invested") row.invested_paise = paise(input.value);
-          else if (key === "current") row.value_paise = paise(input.value);
+          else if (key === "invested") row.invested_paise = input.value ? paise(input.value) : null;
+          else if (key === "current") row.value_paise = input.value ? paise(input.value) : null;
+          else if (key === "principal")
+            row.principal_paise = input.value ? paise(input.value) : null;
+          else if (key === "maturity_amount")
+            row.maturity_amount_paise = input.value ? paise(input.value) : null;
+          else if (key === "rate")
+            row.rate_bps = input.value ? Math.round(Number(input.value) * 100) : null;
           else row[key] = input.value;
         }),
       );
@@ -175,21 +304,32 @@ ${esc(p.raw.slice(0, 4000))}</textarea>
         ? {
             date: today(),
             description: "",
-            amount_paise: 0,
+            amount_paise: null,
             balance_paise: null,
             category: "Uncategorized",
             kind: "expense",
           }
-        : {
-            name: "",
-            symbol: "",
-            type: "mutual_fund",
-            quantity: "",
-            invested_paise: 0,
-            value_paise: 0,
-            as_of: today(),
-            source_ref: `manual-row-${p.rows.length + 1}`,
-          },
+        : p.kind === "fd"
+          ? {
+              account_ref: "",
+              start_date: "",
+              principal_paise: null,
+              rate_bps: null,
+              maturity_date: "",
+              maturity_amount_paise: null,
+              report_date: "",
+              source_ref: `manual-row-${p.rows.length + 1}`,
+            }
+          : {
+              name: "",
+              symbol: "",
+              type: "mutual_fund",
+              quantity: "",
+              invested_paise: null,
+              value_paise: null,
+              as_of: "",
+              source_ref: `manual-row-${p.rows.length + 1}`,
+            },
     );
     drawRows();
   });
@@ -203,12 +343,38 @@ ${esc(p.raw.slice(0, 4000))}</textarea>
     const button = backdrop.querySelector<HTMLButtonElement>("#confirm-import")!;
     button.disabled = true;
     try {
+      const shouldImport =
+        p.kind === "account" || p.kind === "fd" || (p.kind === "investment" && !p.target);
+      const reviewedRows = shouldImport
+        ? await prepareReviewedRows(p.kind, p.rows, String(state.me?.id || ""))
+        : [];
+      let statement: { closing_date: string; balance_paise: number } | undefined;
+      if (p.kind === "account" && reviewedRows.length) {
+        const closingDate =
+          backdrop.querySelector<HTMLInputElement>("#statement-closing-date")!.value;
+        const balance = backdrop.querySelector<HTMLInputElement>(
+          "#statement-closing-balance",
+        )!.value;
+        if (!closingDate || !/^-?\d+(?:\.\d{1,2})?$/.test(balance))
+          throw new Error(
+            "Enter the statement end date and its ending balance before importing transactions.",
+          );
+        const balancePaise = paise(balance);
+        if (
+          !Number.isSafeInteger(balancePaise) ||
+          reviewedRows.some((row) => row.date > closingDate)
+        )
+          throw new Error("Check the statement end date, ending balance and transaction dates.");
+        statement = { closing_date: closingDate, balance_paise: balancePaise };
+      }
       let uploaded: any = { id: p.documentId };
       if (!p.documentId) {
         const fileResponse = await fetch("/api/documents", {
           method: "POST",
           headers: {
-            "content-type": p.file.type || "application/pdf",
+            "content-type": /\.xlsx$/i.test(p.file.name)
+              ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              : p.file.type || "application/pdf",
             "x-document-type": p.kind,
             "x-file-name": p.file.name,
             ...(p.target ? { "x-target-id": p.target } : {}),
@@ -217,17 +383,22 @@ ${esc(p.raw.slice(0, 4000))}</textarea>
         });
         uploaded = await fileResponse.json();
         if (!fileResponse.ok) throw new Error(uploaded.error || "Upload failed");
+        p.documentId = uploaded.id;
       }
-      if (p.kind === "account" && p.rows.length)
-        await post(`imports/${uploaded.id}/commit`, {
-          rows: p.rows.map((r, i) => ({
-            ...r,
-            kind: r.amount_paise < 0 ? "expense" : "income",
-            source_ref: `review-row-${i + 1}`,
-          })),
+      if (p.kind === "account" && p.rows.length) {
+        const result = await post(`imports/${uploaded.id}/commit`, {
+          rows: reviewedRows,
+          statement,
         });
+        if (result.duplicates)
+          window.alert(
+            `${result.duplicates} transaction(s) matched existing records. Check the statement if any are separate transactions.`,
+          );
+      }
       if (p.kind === "investment" && !p.target && p.rows.length)
-        await post(`imports/${uploaded.id}/commit`, { rows: p.rows });
+        await post(`imports/${uploaded.id}/commit`, { rows: reviewedRows });
+      if (p.kind === "fd" && p.rows.length)
+        await post(`imports/${uploaded.id}/commit`, { rows: reviewedRows });
       backdrop.remove();
       state.preview = undefined;
       await load();

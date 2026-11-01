@@ -42,11 +42,11 @@ All route files in the table are under `backend/src/routes/`.
 ## Document import flow
 
 1. `frontend/src/imports/document-upload.ts` collects the file and target account or investment.
-2. `imports/parsers/pdf-text-extractor.ts` reads text PDFs in the browser. `csv-parser.ts` reads CSV rows.
-3. `bank-statement-parser.ts` and `groww-report-parser.ts` suggest records for the owner to review.
+2. `imports/parsers/pdf-text-extractor.ts` reads text PDFs in the browser. `groww-report-parser.ts` reads `.xlsx` workbooks and compatible CSV rows in the browser.
+3. `bank-statement-parser.ts`, `fixed-deposit-parser.ts`, and `groww-report-parser.ts` suggest records for the owner to review. `validate-review.ts` checks entries before import and masks FD account references.
 4. `imports/document-review.ts` displays and edits the suggestions. Confirmation uploads the original file and commits reviewed rows through the API.
 5. `backend/src/routes/documents.routes.ts` stores and serves private source files. `imports.routes.ts` commits or rolls back extracted records.
-6. `backend/src/services/account-balances.ts` derives an account's balance from its newest statement and subsequent transactions.
+6. `backend/src/services/account-balances.ts` derives an account's balance from its latest confirmed statement ending balance and subsequent transactions. Each overlapping transaction retains links to its source statements. `fixed-deposit-import.ts` stores reviewed FD report observations and restores earlier values on rollback.
 
 Reprocessing and rollback actions start in `frontend/src/actions/document.actions.ts`. Exact document templates and OCR remain subject to the limitations recorded in the project specification.
 
@@ -72,7 +72,7 @@ Reprocessing and rollback actions start in `frontend/src/actions/document.action
 | Account or transaction form          | `frontend/src/actions/accounts.actions.ts` or `transactions.actions.ts` |
 | Modal or input behavior              | `frontend/src/components/modal.ts` and `form-fields.ts`                 |
 | Currency, dates, or escaping         | `frontend/src/utils/formatters.ts`                                      |
-| Bank or Groww extraction             | `frontend/src/imports/parsers/`                                         |
+| Bank, FD, or Groww extraction        | `frontend/src/imports/parsers/`                                         |
 | API behavior                         | `backend/src/routes/<area>.routes.ts`                                   |
 | Access to financial records or files | `backend/src/auth/resource-permissions.ts`                              |
 | Sign-in verification                 | `backend/src/auth/authenticate-member.ts`                               |

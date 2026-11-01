@@ -33,11 +33,12 @@ export async function handleDocumentsRoutes(context: RouteContext): Promise<Resp
       const type = request.headers.get("x-document-type") || "other",
         name = request.headers.get("x-file-name") || "document";
       const target = request.headers.get("x-target-id");
-      if (!["account", "investment", "other"].includes(type))
+      if (!["account", "investment", "fd", "other"].includes(type))
         return fail(400, "Invalid document type");
       if (
         target &&
         (type === "other" ||
+          type === "fd" ||
           !(await owns(env, member, type === "account" ? "accounts" : "investments", target)))
       )
         return fail(403, "Target must be owned by uploader");
@@ -53,6 +54,7 @@ export async function handleDocumentsRoutes(context: RouteContext): Promise<Resp
           "image/jpeg",
           "image/png",
           "application/vnd.ms-excel",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         ].includes(mime)
       )
         return fail(400, "Unsupported file type");

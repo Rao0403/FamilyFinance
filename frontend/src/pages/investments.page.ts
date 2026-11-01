@@ -9,13 +9,27 @@ export function investments() {
     <tr>
       <td>
         <strong>${esc(i.name)}</strong>
-        <small class="table-sub">${esc(i.symbol || i.institution || "")}</small>
+        <small class="table-sub">
+          ${esc(i.type === "fd" ? i.institution || "" : i.symbol || i.institution || "")}
+        </small>
+        ${
+          i.type === "fd"
+            ? /* HTML */ `
+                <small class="table-sub">
+                  Principal ${money(i.principal_paise)} ·
+                  ${i.rate_bps == null ? "Rate not provided" : `${(i.rate_bps / 100).toFixed(2)}%`}
+                  · Matures ${dateLabel(i.maturity_date)} ·
+                  ${i.maturity_amount_paise == null ? "Maturity amount not provided" : `Maturity amount ${money(i.maturity_amount_paise)}`}
+                </small>
+              `
+            : ""
+        }
       </td>
       <td>
         ${pill(i.type === "mutual_fund" ? "Mutual fund" : i.type === "fd" ? "Fixed deposit" : "Stock")}
       </td>
       <td>${esc(nameOf(i.owner_id))}</td>
-      <td>${dateLabel(i.latest?.as_of || i.start_date)}</td>
+      <td>${dateLabel(i.latest?.as_of || i.fd_report_date || i.start_date)}</td>
       <td class="right">${money(i.latest?.invested_paise ?? i.principal_paise)}</td>
       <td class="right">
         <strong>${money(i.latest?.value_paise ?? i.principal_paise)}</strong>

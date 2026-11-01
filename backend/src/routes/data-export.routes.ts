@@ -12,6 +12,16 @@ export async function handleDataExportRoutes(context: RouteContext): Promise<Res
     const transactions = await readAll(
       env.DB.prepare("SELECT * FROM transactions WHERE owner_id=?").bind(member.id),
     );
+    const statementBalances = await readAll(
+      env.DB.prepare(
+        "SELECT * FROM statement_balances WHERE account_id IN (SELECT id FROM accounts WHERE owner_id=?)",
+      ).bind(member.id),
+    );
+    const transactionImportSources = await readAll(
+      env.DB.prepare(
+        "SELECT * FROM transaction_import_sources WHERE transaction_id IN (SELECT id FROM transactions WHERE owner_id=?)",
+      ).bind(member.id),
+    );
     const investments = await readAll(
       env.DB.prepare("SELECT * FROM investments WHERE owner_id=?").bind(member.id),
     );
@@ -20,6 +30,13 @@ export async function handleDataExportRoutes(context: RouteContext): Promise<Res
       ? await readAll(
           env.DB.prepare(
             `SELECT * FROM investment_snapshots WHERE investment_id IN (${investmentIds.map(() => "?").join(",")})`,
+          ).bind(...investmentIds),
+        )
+      : [];
+    const fixedDepositObservations = investmentIds.length
+      ? await readAll(
+          env.DB.prepare(
+            `SELECT * FROM fd_report_observations WHERE investment_id IN (${investmentIds.map(() => "?").join(",")})`,
           ).bind(...investmentIds),
         )
       : [];
@@ -39,8 +56,11 @@ export async function handleDataExportRoutes(context: RouteContext): Promise<Res
           exported_at: now(),
           accounts,
           transactions,
+          statementBalances,
+          transactionImportSources,
           investments,
           snapshots,
+          fixedDepositObservations,
           payments,
           documents,
           shares,

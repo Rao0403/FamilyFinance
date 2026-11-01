@@ -15,7 +15,7 @@ export function parseCsv(text: string): string[][] {
     } else if ((ch === "\n" || ch === "\r") && !quoted) {
       if (ch === "\r" && text[i + 1] === "\n") i++;
       row.push(cell);
-      if (row.some(Boolean)) rows.push(row);
+      rows.push(row);
       row = [];
       cell = "";
     } else cell += ch;

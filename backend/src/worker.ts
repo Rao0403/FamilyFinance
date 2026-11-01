@@ -14,6 +14,9 @@ export default {
           "Invalid date",
           "Expected a JSON object",
           "Account not found",
+          "Invalid fixed deposit reference",
+          "Invalid fixed deposit values",
+          "Duplicate fixed deposit in this report",
         ].includes(message)
       )
         return fail(400, message);
