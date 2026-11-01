@@ -57,7 +57,7 @@ export function parseAmount(value: string): number | null {
     .trim()
     .replace(/^(?:₹|rs\.?|inr)\s*/i, "")
     .replace(/,/g, "");
-  if (!/^-?\d+\.\d{2}$/.test(clean)) return null;
+  if (!/^-?\d+(?:\.\d{1,2})?$/.test(clean)) return null;
   const result = Math.round(Number(clean) * 100);
   return Number.isSafeInteger(result) ? result : null;
 }

@@ -10,6 +10,7 @@ export function suggestRows(lines: PdfLine[]): {
   const rows: Item[] = [];
   let anchors: ReturnType<typeof columns> = null;
   let skipped = 0;
+  let continuation: { row: Item; page: number } | null = null;
   for (const line of lines) {
     const header = columns(line, {
       date: /\bdate\b/i,
@@ -20,19 +21,33 @@ export function suggestRows(lines: PdfLine[]): {
     });
     if (header) {
       anchors = header;
+      continuation = null;
       continue;
     }
     if (!anchors) continue;
     const dateLimit = (anchors.date.end + anchors.details.start) / 2;
     const dateItem = line.items.find((item) => item.x < dateLimit && parseDate(item.text) !== null);
-    if (!dateItem) continue;
+    const detailBoundary = (anchors.details.end + anchors.debit.end) / 2;
+    if (!dateItem) {
+      if (continuation && continuation.page === line.page) {
+        const detailItems = line.items.filter(
+          (item) => item.x >= dateLimit && rightEdge(item) < detailBoundary,
+        );
+        if (detailItems.length && detailItems.length === line.items.length) {
+          continuation.row.description = `${continuation.row.description} ${detailItems
+            .map((item) => item.text.trim())
+            .join(" ")}`.trim();
+        } else continuation = null;
+      }
+      continue;
+    }
+    continuation = null;
     const amounts: { debit: number[]; credit: number[]; balance: number[] } = {
       debit: [],
       credit: [],
       balance: [],
     };
     const description: string[] = [];
-    const detailBoundary = (anchors.details.end + anchors.debit.end) / 2;
     const debitBoundary = (anchors.debit.end + anchors.credit.end) / 2;
     const creditBoundary = (anchors.credit.end + anchors.balance.end) / 2;
     for (const item of line.items) {
@@ -58,7 +73,7 @@ export function suggestRows(lines: PdfLine[]): {
       skipped++;
       continue;
     }
-    rows.push({
+    const row: Item = {
       date: parseDate(dateItem.text),
       description: description.join(" ").trim(),
       amount_paise: debit !== undefined ? -debit : credit,
@@ -66,7 +81,9 @@ export function suggestRows(lines: PdfLine[]): {
       category: "Uncategorized",
       kind: debit !== undefined ? "expense" : "income",
       source_ref: `page ${line.page}, line ${line.line}`,
-    });
+    };
+    rows.push(row);
+    continuation = { row, page: line.page };
   }
   const warnings = [
     "Check every date, description, debit, credit and running balance against the statement before importing.",
