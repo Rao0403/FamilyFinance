@@ -88,7 +88,6 @@ export function bind(load: RefreshApplication) {
         method: "PATCH",
         body: JSON.stringify({
           name: value(profileForm, "name"),
-          phone: value(profileForm, "phone"),
         }),
       });
       await load();

@@ -41,7 +41,7 @@ export async function handlePaymentsRoutes(context: RouteContext): Promise<Respo
           data.account_id || null,
           Math.min(Math.max(Number(data.remind_days ?? 3), 0), 30),
           data.email_enabled === false ? 0 : 1,
-          data.sms_enabled === true ? 1 : 0,
+          0,
         )
         .run();
       await audit(env, member, "create", "payment", id);

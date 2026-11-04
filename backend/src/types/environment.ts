@@ -8,6 +8,4 @@ export interface Env {
   DEV_EMAIL?: string;
   RESEND_API_KEY?: string;
   RESEND_FROM?: string;
-  MSG91_AUTHKEY?: string;
-  MSG91_TEMPLATE_ID?: string;
 }

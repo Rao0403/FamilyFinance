@@ -11,11 +11,11 @@ export function settings() {
         <div class="panel-head">
           <div>
             <h2>Your profile</h2>
-            <p>Your phone number is private to your account</p>
+            <p>Your email is used for payment reminders</p>
           </div>
         </div>
         <form id="profile-form" class="stack-form">
-          ${field("Display name", "name", "text", true, `value="${esc(state.me?.name)}"`)}${field("Mobile number with 91 prefix", "phone", "tel", false, `value="${esc(state.me?.phone || "")}" placeholder="919876543210"`)}
+          ${field("Display name", "name", "text", true, `value="${esc(state.me?.name)}"`)}
           <label>
             Email
             <input value="${esc(state.me?.email)}" disabled />

@@ -11,12 +11,9 @@ export async function handleProfileRoutes(context: RouteContext): Promise<Respon
   if (key === "me" && method === "GET") return json(member);
   if (key === "me" && method === "PATCH") {
     const data = await body(request),
-      name = asText(data.name) || member.name,
-      phone = asText(data.phone, 20).replace(/[^\d]/g, "");
-    if (phone && !/^91\d{10}$/.test(phone))
-      return fail(400, "Phone must be an Indian mobile number with 91 prefix");
-    await env.DB.prepare("UPDATE members SET name=?,phone=? WHERE id=?")
-      .bind(name, phone || null, member.id)
+      name = asText(data.name) || member.name;
+    await env.DB.prepare("UPDATE members SET name=? WHERE id=?")
+      .bind(name, member.id)
       .run();
     await audit(env, member, "profile", "member", member.id);
     return json({ ok: true });

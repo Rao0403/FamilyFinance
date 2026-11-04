@@ -54,7 +54,7 @@ Reprocessing and rollback actions start in `frontend/src/actions/document.action
 
 `backend/src/worker.ts` handles scheduled events and starts two jobs:
 
-- `jobs/payment-reminders.ts` checks due dates and records delivery attempts. It calls `services/reminder-delivery.ts`, where email and SMS provider requests live.
+- `jobs/payment-reminders.ts` checks due dates and records delivery attempts. It calls `services/reminder-delivery.ts` to send email.
 - `jobs/document-cleanup.ts` retries deletion of private source files queued by an owner's data deletion request.
 
 `wrangler.jsonc` defines the cron schedule and D1/R2 bindings. `backend/src/types/environment.ts` describes those bindings and provider variables.
@@ -77,7 +77,7 @@ Reprocessing and rollback actions start in `frontend/src/actions/document.action
 | Access to financial records or files | `backend/src/auth/resource-permissions.ts`                              |
 | Sign-in verification                 | `backend/src/auth/authenticate-member.ts`                               |
 | Balance calculations                 | `backend/src/services/account-balances.ts`                              |
-| Email or SMS provider integration    | `backend/src/services/reminder-delivery.ts`                             |
+| Email provider integration           | `backend/src/services/reminder-delivery.ts`                             |
 | Database schema                      | Add a new numbered file in `backend/migrations/`                        |
 | Hosting bindings and cron            | `wrangler.jsonc`                                                        |
 | Product requirements                 | `docs/project-spec.md`                                                  |

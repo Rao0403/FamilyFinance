@@ -25,7 +25,7 @@ export async function runReminders(env: Env, at = new Date()) {
       role: "member",
       active: 1,
     };
-    for (const channel of ["email", "sms"] as const) {
+    for (const channel of ["email"] as const) {
       if (!row[`${channel}_enabled`]) continue;
       const existing = await env.DB.prepare(
         "SELECT id FROM reminder_deliveries WHERE payment_id=? AND due_date=? AND channel=? AND recipient_id=?",
@@ -40,7 +40,7 @@ export async function runReminders(env: Env, at = new Date()) {
         .bind(id, row.id, row.next_due_date, channel, recipient.id)
         .run();
       try {
-        const providerId = await sendReminder(env, channel, recipient);
+        const providerId = await sendReminder(env, recipient);
         await env.DB.prepare(
           "UPDATE reminder_deliveries SET status='accepted',provider_id=? WHERE id=?",
         )

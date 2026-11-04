@@ -42,7 +42,7 @@ Start with [the code-flow guide](docs/code-structure.md) to trace a page, API re
 - Indian Bank statement PDFs and term deposit summary PDFs are read in the browser into editable review tables. The uploader checks the suggested records and confirms a statement's ending balance before totals change. Overlapping statement imports retain their source links when an import is undone. Password-protected text PDFs can be opened with a password used only in the browser. Scanned PDFs still need OCR.
 - Groww `.xlsx` holdings reports, and compatible CSV files, are read in the browser. The importer identifies the holdings table below the summary and preserves folio, units and the report's valuation date for review. A multi-deposit FD report is private unless its owner explicitly shares the entire document.
 - The provided screenshots show headings but hide PDF data rows. PDF and spreadsheet importers have been checked with fictional examples; actual files still need private, local validation for differences in their rows, text layout, and formats before family use.
-- Payment schedules with optional transaction matching, email and SMS reminder jobs, source documents, spending, investment allocation and net worth checkpoint reports, personal JSON export, and owner-initiated financial data deletion.
+- Payment schedules with optional transaction matching, email reminder jobs, source documents, spending, investment allocation and net worth checkpoint reports, personal JSON export, and owner-initiated financial data deletion.
 - Search and filter accessible transactions. Confirmed family transfers and loans appear in a family ledger; pending entries and changes require the other participant's approval. Family balances do not change net worth. Family ledger changes require migration `0006` locally before running the updated application.
 
 **No live financial data or provider credentials are in this repository.** The deployment is not configured yet. Do not upload real statements to the local development database if other people can access that computer.
@@ -89,12 +89,11 @@ Deployment should wait until document import tests with redacted real samples an
 
 ## Reminder providers
 
-The Worker cron runs daily at 09:00 India Standard Time (`03:30` UTC). It sends a generic message to the payment owner only, avoiding payment names and amounts in email/SMS. It records whether the provider accepted or rejected each attempt.
+The Worker cron runs daily at 09:00 India Standard Time (`03:30` UTC). It sends a generic email to the payment owner only, avoiding payment names and amounts. It records whether the provider accepted or rejected each attempt.
 
 - Email: configure a verified sender in `RESEND_FROM` and store `RESEND_API_KEY` as a Worker secret. The adapter uses [Resend's email API](https://resend.com/vercel).
-- SMS: complete MSG91's India sender/DLT and approved template setup, configure `MSG91_TEMPLATE_ID`, and store `MSG91_AUTHKEY` as a Worker secret. The adapter uses [MSG91's flow API](https://docs.msg91.com/sms/send-sms). The approved template should contain the generic reminder wording. A phone number in `91XXXXXXXXXX` format is entered by each member in Settings.
 
-Provider accounts, approved SMS template and credentials are not supplied by this repository. SMS charges are separate from Cloudflare hosting.
+The email provider account and credentials are not supplied by this repository.
 
 ## Backups
 

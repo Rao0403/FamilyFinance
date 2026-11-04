@@ -43,10 +43,6 @@ export async function handlePaymentAction(
             <input name="email_enabled" type="checkbox" checked />
             Email
           </label>
-          <label>
-            <input name="sms_enabled" type="checkbox" />
-            SMS
-          </label>
         </div>
       `,
       async (f) => {
@@ -58,7 +54,6 @@ export async function handlePaymentAction(
           frequency: value(f, "frequency"),
           remind_days: Number(value(f, "remind_days")),
           email_enabled: fd.has("email_enabled"),
-          sms_enabled: fd.has("sms_enabled"),
         });
       },
     );

@@ -17,7 +17,7 @@ The product should be built as one complete application against this specificati
 - Investment types: listed stocks, mutual funds, and fixed deposits (FDs).
 - Data is refreshed mainly by uploading source documents. Original files are retained for later reference.
 - Indian Bank statements currently available to the family are PDFs covering the last 30 days. The family also has an Indian Bank term deposit summary PDF and a Groww mutual fund holdings report in `.xlsx` format; periodic Groww uploads will refresh investment data.
-- Reminders are delivered by email and SMS, subject to each owner's notification settings.
+- Reminders are delivered by email, subject to each owner's notification settings. SMS is not required.
 - The family will mainly use the application in a web browser so it works on iOS, Android, and computers without separate native apps. The layout should work well on phones.
 
 ## 3. Users and access
@@ -70,7 +70,7 @@ Editing another person's records is not allowed unless the owner explicitly gran
 - Create one-time and recurring obligations such as bills, rent, subscriptions, premiums, and FD-related dates when relevant.
 - Track amount, due date, frequency, owner, status, and optional linked account or source document.
 - Show upcoming, overdue, and paid payments. A transaction can be matched to a payment for confirmation, with owner review before marking it paid.
-- Allow each owner to choose reminder timing and email/SMS delivery. SMS messages use discreet wording by default and omit financial amounts unless the owner opts in.
+- Allow each owner to choose reminder timing and whether to receive email. Reminders use discreet wording and omit financial amounts.
 - Schedule reminders in India Standard Time, record delivery attempts, and avoid duplicate messages for the same reminder event.
 
 ### Net worth and reports
@@ -118,7 +118,7 @@ The PDF extraction design must fit Workers' execution limits. Where appropriate,
 
 An alternative is Supabase Pro (currently from $25 USD/month) in its Mumbai region. It bundles database, authentication, file storage, and seven days of daily database backups, though file backups still need their own plan. Its higher recurring cost may buy simpler operations. The free Supabase plan can pause after low activity and does not include those automated database backups, so it is not the preferred home for the family's production records.
 
-SMS delivery has separate provider charges and setup. The sender rules for India and the provider's requirements must be checked before choosing a service or promising delivery.
+Email delivery requires a verified sender and provider configuration.
 
 Sources: [Cloudflare Workers pricing](https://developers.cloudflare.com/workers/platform/pricing/), [D1 pricing](https://developers.cloudflare.com/d1/platform/pricing/), [D1 limits and recovery](https://developers.cloudflare.com/d1/platform/limits/), [R2 pricing](https://developers.cloudflare.com/r2/pricing/), [Cloudflare plans](https://www.cloudflare.com/plans/), [Supabase pricing](https://supabase.com/pricing), [Supabase backups](https://supabase.com/docs/guides/platform/backups/), [Supabase regions](https://supabase.com/docs/guides/platform/regions), [TRAI sender guidance](https://www.trai.gov.in/advice-to-senders).
 
@@ -128,6 +128,6 @@ Sources: [Cloudflare Workers pricing](https://developers.cloudflare.com/workers/
 2. **Bank and FD documents:** Screenshots confirm the statement and term deposit summary headings, but the rows are hidden. Validate parsing privately on actual PDFs and check whether any files require OCR.
 3. **Hosting:** Cloudflare is the current implementation target. Configure a Cloudflare account, Access, D1, R2, and independent backups before deployment.
 4. **Sharing detail:** Access lasts until the owner revokes it. An account grant includes its transactions and statement files.
-5. **Reminders:** The default lead time is three days and only the payment owner receives email or SMS. MSG91 sender registration, approved template, and provider credentials are needed for live SMS delivery.
+5. **Reminders:** The default lead time is three days and only the payment owner receives email. A verified sender and provider credentials are needed for delivery.
 
 This specification continues to guide implementation. Decisions that depend on real file formats and hosted provider setup remain open.

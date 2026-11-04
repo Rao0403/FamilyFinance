@@ -17,7 +17,7 @@ export function payments() {
         <strong>${esc(p.title)}</strong>
         <small>
           ${esc(p.frequency)} · ${esc(nameOf(p.owner_id))} ·
-          ${p.email_enabled ? "Email" : ""}${p.email_enabled && p.sms_enabled ? " + " : ""}${p.sms_enabled ? "SMS" : ""}
+          ${p.email_enabled ? "Email reminder" : "Reminders off"}
         </small>
       </div>
       <div class="payment-end">
@@ -50,7 +50,7 @@ export function payments() {
       <div>
         <strong>Reminder delivery</strong>
         <p>
-          Email and SMS sending requires provider credentials and sender setup. Payment tracking
+          Email sending requires provider credentials and sender setup. Payment tracking
           works independently.
         </p>
       </div>
