@@ -9,6 +9,7 @@ export const state: {
   documents: Item[];
   transactions: Item[];
   shares: Item[];
+  ledger: { entries: Item[]; proposals: Item[]; links: Item[] };
   reports?: Item;
   dashboard?: Item;
   tab: string;
@@ -30,5 +31,6 @@ export const state: {
   documents: [],
   transactions: [],
   shares: [],
+  ledger: { entries: [], proposals: [], links: [] },
   tab: "Overview",
 };

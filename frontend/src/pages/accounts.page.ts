@@ -2,7 +2,7 @@ import type { Item } from "../types/finance-record";
 import { empty, pill, sectionHeader } from "../components/page-elements";
 import { nameOf, owned } from "../state/finance-selectors";
 import { state } from "../state/finance-state";
-import { dateLabel, esc, money } from "../utils/formatters";
+import { dateLabel, esc, money, today } from "../utils/formatters";
 
 export function accounts() {
   const renderAccountCard = (a: Item) => /* HTML */ `
@@ -14,6 +14,7 @@ export function accounts() {
       <h3>${esc(a.name)}</h3>
       <small>${esc(a.institution)} ${esc(a.masked_number || "")}</small>
       <strong>${money(a.balance_paise)}</strong>
+      <small>Spent this month: ${money(state.transactions.filter((t) => t.account_id === a.id && t.date.startsWith(today().slice(0, 7)) && t.kind === "expense").reduce((sum, t) => sum + Math.abs(t.amount_paise), 0))} · Recorded transactions only; statements may be incomplete</small>
       <div class="account-bottom">
         <span>As of ${dateLabel(a.balance_as_of)}</span>
         ${
@@ -30,7 +31,7 @@ export function accounts() {
   `;
 
   const renderTransactionRow = (t: Item) => /* HTML */ `
-    <tr>
+    <tr data-transaction-id="${esc(t.id)}">
       <td>${dateLabel(t.date)}</td>
       <td><strong>${esc(t.description)}</strong></td>
       <td>${pill(t.category)}</td>
@@ -71,6 +72,17 @@ export function accounts() {
           <p>${rows.length} visible entries</p>
         </div>
       </div>
+      <form id="transaction-filters" class="stack-form">
+        <label>Search description <input name="search" type="search" placeholder="Search transactions"></label>
+        <label>From <input name="from" type="date"></label>
+        <label>To <input name="to" type="date"></label>
+        <label>Account <select name="account"><option value="">All visible accounts</option>${state.accounts.map((a) => `<option value="${esc(a.id)}">${esc(a.name)} · ${esc(nameOf(a.owner_id))}</option>`).join("")}</select></label>
+        <label>Category <select name="category"><option value="">All categories</option>${[...new Set(state.transactions.map((t) => String(t.category)))].sort().map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join("")}</select></label>
+        <label>Direction <select name="direction"><option value="">Money in and out</option><option value="in">Money in</option><option value="out">Money out</option></select></label>
+        <label>Minimum amount (₹) <input name="min" type="number" min="0" step="0.01"></label>
+        <label>Maximum amount (₹) <input name="max" type="number" min="0" step="0.01"></label>
+        <button class="secondary" type="reset">Clear filters</button><p id="transaction-filter-count" aria-live="polite"></p>
+      </form>
       ${
         rows.length
           ? /* HTML */ `

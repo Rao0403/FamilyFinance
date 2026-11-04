@@ -4,6 +4,7 @@ import { handleAccountsRoutes } from "./routes/accounts.routes";
 import { handleDashboardRoutes } from "./routes/dashboard.routes";
 import { handleDataExportRoutes } from "./routes/data-export.routes";
 import { handleDocumentsRoutes } from "./routes/documents.routes";
+import { handleFamilyLedgerRoutes } from "./routes/family-ledger.routes";
 import { handleImportsRoutes } from "./routes/imports.routes";
 import { handleInvestmentsRoutes } from "./routes/investments.routes";
 import { handleMembersRoutes } from "./routes/members.routes";
@@ -23,6 +24,7 @@ const routes: Record<string, RouteHandler> = {
   shares: handleSharingRoutes,
   accounts: handleAccountsRoutes,
   transactions: handleTransactionsRoutes,
+  "family-ledger": handleFamilyLedgerRoutes,
   investments: handleInvestmentsRoutes,
   payments: handlePaymentsRoutes,
   reminders: handleRemindersRoutes,

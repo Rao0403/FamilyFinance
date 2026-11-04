@@ -49,6 +49,9 @@ export async function handleDataExportRoutes(context: RouteContext): Promise<Res
     const shares = await readAll(
       env.DB.prepare("SELECT * FROM shares WHERE owner_id=?").bind(member.id),
     );
+    const familyLedger = await readAll(env.DB.prepare("SELECT * FROM family_ledger WHERE sender_id=? OR recipient_id=?").bind(member.id, member.id));
+    const familyLedgerProposals = await readAll(env.DB.prepare("SELECT * FROM family_ledger_proposals WHERE proposer_id=? OR approver_id=?").bind(member.id, member.id));
+    const familyLedgerLinks = await readAll(env.DB.prepare("SELECT * FROM family_ledger_transaction_links WHERE owner_id=?").bind(member.id));
     await audit(env, member, "export", "member", member.id);
     return new Response(
       JSON.stringify(
@@ -64,6 +67,9 @@ export async function handleDataExportRoutes(context: RouteContext): Promise<Res
           payments,
           documents,
           shares,
+          familyLedger,
+          familyLedgerProposals,
+          familyLedgerLinks,
         },
         null,
         2,

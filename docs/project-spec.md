@@ -11,9 +11,9 @@ The product should be built as one complete application against this specificati
 ## 2. Agreed decisions
 
 - Four individual users, based in India; primary currency INR and dates/times displayed in India Standard Time.
-- No shared finances or joint ownership in the initial data model. Every financial record has one owner.
+- Accounts, investments, and documents remain individually owned. The family ledger is visible to all members only after both participants confirm an entry.
 - Financial information is private by default. Sharing is explicitly granted by the owner, including when the recipient is an administrator.
-- Spending, investments, upcoming payments, and net worth are core areas. Loan management is outside the current scope because there are no loans to track.
+- Spending, investments, upcoming payments, and net worth are core areas. Family loans and repayments are tracked separately from net worth.
 - Investment types: listed stocks, mutual funds, and fixed deposits (FDs).
 - Data is refreshed mainly by uploading source documents. Original files are retained for later reference.
 - Indian Bank statements currently available to the family are PDFs covering the last 30 days. The family also has an Indian Bank term deposit summary PDF and a Groww mutual fund holdings report in `.xlsx` format; periodic Groww uploads will refresh investment data.
@@ -48,6 +48,15 @@ Editing another person's records is not allowed unless the owner explicitly gran
 - Do not count transfers between tracked accounts as income or spending. Investment purchases change the form of an asset rather than becoming an expense.
 - Detect overlapping statement periods and likely duplicate transactions. Highlight date gaps and reconcile imported closing balance with the account balance shown in the app.
 - Provide transaction search, filters, monthly category totals, and exports.
+- Search all accessible transactions by description and filter by date, account, category, direction and amount. Shared account spending is visible to the recipient, with incomplete statement coverage made clear.
+
+### Family ledger
+
+- Record transfers between two distinct family members as pocket money, expense contribution, gift, other, loan, or repayment. Amounts are in INR and entries have a date and optional note.
+- A participant proposes an entry and the other participant confirms or rejects it. Pending entries are visible only to the participants; confirmed entries are visible to all active family members. Changes or removal require the other participant's confirmation, leaving the confirmed record in place until then.
+- A confirmed loan creates a balance; repayments reference a loan and cannot exceed its remaining amount. An opening loan records an existing outstanding amount and is excluded from transfers sent and received. Transfers that are not loans or repayments do not create a debt.
+- The dashboard shows confirmed transfers, sent/received totals over a selected period and outstanding amounts. Pending items are clearly identified and excluded from totals. Ledger entries do not reveal linked private account details or alter net worth.
+- Only the owner may optionally link their own transaction; the link remains private and must not expose a statement or its description to other members. Linking two sides must not duplicate a transfer.
 
 ### Investments
 
@@ -66,7 +75,7 @@ Editing another person's records is not allowed unless the owner explicitly gran
 
 ### Net worth and reports
 
-- Calculate visible net worth as visible bank/cash balances plus visible investment values, minus any liabilities entered in the future. No loan module is required now.
+- Calculate visible net worth as visible bank/cash balances plus visible investment values. Family ledger balances do not alter net worth.
 - Show the date of each component used. A figure with stale holdings or missing bank periods must be labelled as such.
 - Provide monthly spending and income trends, category breakdown, investment allocation, and net worth history. Shared records contribute only for viewers authorized to see them.
 
@@ -92,6 +101,7 @@ Editing another person's records is not allowed unless the owner explicitly gran
 - Encrypt financial records and retained documents in storage and in transit. Restrict file access using the same owner permissions as extracted records.
 - Keep an audit history for imports, edits, sharing changes, and document access.
 - Back up data and documents, and provide owners a way to export their own records and delete their own data.
+- Deleting one member's financial data removes their private transaction links, but retains family ledger entries and proposals involving another member; the other participant must confirm ledger removal.
 - Never ask for or store Indian Bank internet banking credentials, PINs, or OTPs.
 
 ## 7. Bank connection decision

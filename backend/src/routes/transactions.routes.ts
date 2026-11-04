@@ -21,7 +21,7 @@ export async function handleTransactionsRoutes(context: RouteContext): Promise<R
       if (!accounts.length) return json([]);
       const rows = await readAll(
         env.DB.prepare(
-          `SELECT * FROM transactions WHERE account_id IN (${accounts.map(() => "?").join(",")}) ORDER BY date DESC, created_at DESC LIMIT 2000`,
+          `SELECT * FROM transactions WHERE account_id IN (${accounts.map(() => "?").join(",")}) ORDER BY date DESC, created_at DESC`,
         ).bind(...accounts),
       );
       return json(rows);

@@ -1,5 +1,6 @@
 import type { RefreshApplication } from "../types/finance-record";
 import { handleAccountAction } from "./accounts.actions";
+import { handleFamilyLedgerAction } from "./family-ledger.actions";
 import { handleDocumentAction } from "./document.actions";
 import { handleInvestmentAction } from "./investment.actions";
 import { handleMemberAction } from "./member.actions";
@@ -13,6 +14,12 @@ const actions: Record<
   (type: string, id: string | undefined, refresh: RefreshApplication) => unknown
 > = {
   account: handleAccountAction,
+  "ledger-add": handleFamilyLedgerAction,
+  "ledger-edit": handleFamilyLedgerAction,
+  "ledger-delete": handleFamilyLedgerAction,
+  "ledger-link": handleFamilyLedgerAction,
+  "ledger-confirm": handleFamilyLedgerAction,
+  "ledger-reject": handleFamilyLedgerAction,
   transaction: handleTransactionAction,
   "transaction-edit": handleTransactionAction,
   investment: handleInvestmentAction,

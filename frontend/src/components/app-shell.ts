@@ -5,6 +5,7 @@ import { dateLabel, esc, today } from "../utils/formatters";
 const nav = [
   "Overview",
   "Accounts",
+  "Family ledger",
   "Investments",
   "Payments",
   "Reports",
@@ -16,7 +17,7 @@ export function shell(content: string, navigate: (tab: string) => void) {
   const renderNavigationItem = (tab: string) => /* HTML */ `
     <button class="nav-item ${state.tab === tab ? "active" : ""}" data-tab="${tab}">
       <span class="nav-glyph">
-        ${{ Overview: "◫", Accounts: "▤", Investments: "◈", Payments: "◷", Reports: "▥", Documents: "▧", Sharing: "♧", Settings: "⚙" }[tab]}
+        ${{ Overview: "◫", Accounts: "▤", "Family ledger": "↔", Investments: "◈", Payments: "◷", Reports: "▥", Documents: "▧", Sharing: "♧", Settings: "⚙" }[tab]}
       </span>
       ${tab}
     </button>

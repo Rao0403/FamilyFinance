@@ -3,6 +3,7 @@ import { shell } from "../components/app-shell";
 import { accounts } from "../pages/accounts.page";
 import { documentsView } from "../pages/documents.page";
 import { investments } from "../pages/investments.page";
+import { familyLedger } from "../pages/family-ledger.page";
 import { overview } from "../pages/overview.page";
 import { decoratePaymentStatuses } from "../pages/payment-status";
 import { payments } from "../pages/payments.page";
@@ -32,6 +33,7 @@ async function load() {
       shares,
       dashboard,
       reports,
+      ledger,
     ] = await Promise.all(
       [
         "members",
@@ -43,6 +45,7 @@ async function load() {
         "shares",
         "dashboard",
         "reports",
+        "family-ledger",
       ].map((path) => api(path)),
     );
     if (loadNumber !== latestLoad) return;
@@ -56,6 +59,7 @@ async function load() {
       shares,
       dashboard,
       reports,
+      ledger,
     });
     render();
   } catch (error) {
@@ -79,6 +83,7 @@ function render() {
       {
         Overview: overview,
         Accounts: accounts,
+        "Family ledger": familyLedger,
         Investments: investments,
         Payments: payments,
         Reports: reports,

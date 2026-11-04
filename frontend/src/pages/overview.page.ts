@@ -3,6 +3,7 @@ import { card, empty, sectionHeader } from "../components/page-elements";
 import { nameOf } from "../state/finance-selectors";
 import { state } from "../state/finance-state";
 import { dateLabel, esc, money, today } from "../utils/formatters";
+import { ledgerBalances } from "./family-ledger.page";
 
 export function overview() {
   const renderUpcomingPayment = (p: Item) => /* HTML */ `
@@ -61,6 +62,13 @@ export function overview() {
       ${card("Visible net worth", money(total), "Bank balances + investment values", "↗", "hero")}${card("Bank balances", money(d.bank_paise), `${state.accounts.length} visible account${state.accounts.length === 1 ? "" : "s"}`, "▤")}${card("Investments", money(d.investment_paise), `${state.investments.length} visible holding${state.investments.length === 1 ? "" : "s"}`, "◈")}${card("Spent this month", money(d.spending_paise), d.month || "Current month", "↘")}
     </div>
     <div class="two-col">
+      <section class="panel"><div class="panel-head"><div><h2>Family ledger</h2><p>Confirmed family transfers and outstanding loans</p></div><button class="text-button" data-tab="Family ledger">View ledger →</button></div>
+        <p>${state.ledger.proposals.filter((p) => p.approver_id === state.me?.id).length} awaiting your confirmation</p>
+        <p>Transfers this month</p>
+        ${state.members.map((m) => { const entries = state.ledger.entries.filter((e) => e.kind !== "opening_loan" && e.date.startsWith(today().slice(0, 7))); const sent = entries.filter((e) => e.sender_id === m.id).reduce((sum, e) => sum + e.amount_paise, 0); const received = entries.filter((e) => e.recipient_id === m.id).reduce((sum, e) => sum + e.amount_paise, 0); return `<div class="list-row"><strong class="grow">${esc(m.name)}</strong><small>Sent ${money(sent)} · received ${money(received)}</small></div>`; }).join("")}
+        ${ledgerBalances(state.ledger.entries).map((b) => `<div class="list-row"><span class="grow">${esc(nameOf(b.recipient_id))} owes ${esc(nameOf(b.sender_id))}</span><strong>${money(b.remaining)}</strong></div>`).join("") || "<p>No outstanding confirmed loans.</p>"}
+        ${state.ledger.entries.slice(0, 4).map((e) => `<div class="list-row"><span class="grow">${esc(nameOf(e.sender_id))} → ${esc(nameOf(e.recipient_id))} <small>${dateLabel(e.date)} · ${esc(e.kind.replaceAll("_", " "))}</small></span><strong>${money(e.amount_paise)}</strong></div>`).join("")}
+      </section>
       <section class="panel">
         <div class="panel-head">
           <div>

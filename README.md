@@ -43,6 +43,7 @@ Start with [the code-flow guide](docs/code-structure.md) to trace a page, API re
 - Groww `.xlsx` holdings reports, and compatible CSV files, are read in the browser. The importer identifies the holdings table below the summary and preserves folio, units and the report's valuation date for review. A multi-deposit FD report is private unless its owner explicitly shares the entire document.
 - The provided screenshots show headings but hide PDF data rows. PDF and spreadsheet importers have been checked with fictional examples; actual files still need private, local validation for differences in their rows, text layout, and formats before family use.
 - Payment schedules with optional transaction matching, email and SMS reminder jobs, source documents, spending, investment allocation and net worth checkpoint reports, personal JSON export, and owner-initiated financial data deletion.
+- Search and filter accessible transactions. Confirmed family transfers and loans appear in a family ledger; pending entries and changes require the other participant's approval. Family balances do not change net worth. Family ledger changes require migration `0006` locally before running the updated application.
 
 **No live financial data or provider credentials are in this repository.** The deployment is not configured yet. Do not upload real statements to the local development database if other people can access that computer.
 
