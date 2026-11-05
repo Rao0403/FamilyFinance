@@ -1,118 +1,94 @@
 # Family Finance
 
-A private browser-based finance tracker for four family members in India. Each member owns their data and explicitly controls sharing. The [project specification](docs/project-spec.md) records the agreed product rules.
+Family Finance is a browser-based finance tracker built for one family in India. It brings bank transactions, investments, upcoming payments and money exchanged between family members into one place, with amounts in INR.
 
-## Repository layout
+The project is **under active development**. It is designed for a single family of up to four members, not for multiple independent families. Hosting, backups and email delivery require separate configuration and verification. There is no bank-account connection: members upload reports or enter information manually.
+
+## What it does
+
+- **Accounts and spending:** import text-based Indian Bank PDF statements, review transactions and ending balances, and search or filter transactions. The app uses the latest dated balance and recorded later transactions; a balance is assumed to include all transactions on its date.
+- **Investments:** import Indian Bank term deposit summary PDFs and Groww mutual fund holdings reports in `.xlsx` or compatible CSV format. Review suggested records before saving. Later reports update matching holdings and add new ones; the owner can confirm removal of holdings missing from a report. Original uploads and historical observations are retained.
+- **Payments:** record upcoming and recurring payments, optionally link an account transaction, and configure email reminders. Email requires a verified sender and provider credentials.
+- **Family ledger:** record transfers, family loans and repayments. Both participants must agree before an entry becomes visible to the family; proposed changes also require confirmation. Family debts are shown separately and do not change net worth.
+- **Sharing:** records are private in the app until their owner shares them. Sharing an account includes its transactions and statement files. Confirmed family ledger entries are visible to all active family members.
+- **Reports and data controls:** view spending, investment and net-worth summaries for records you can access; export your data or request deletion of your own financial data.
+
+PDF and spreadsheet layouts can vary. Check imported rows and report dates against the source before saving. Scanned PDFs need manual entry; uploaded values are snapshots, not live market prices. A report with no reviewed holdings or with mixed report dates does not trigger missing-holding prompts.
+
+## Privacy and security
+
+Cloudflare Access authenticates each member. The application verifies their identity and applies owner-controlled sharing permissions; the app administrator does not automatically see another member's private records in the app. An account owner can revoke a share. Original documents are stored in a private R2 bucket and accessed through the application.
+
+The hosting account owner and anyone with access to database or document backups may have broader access outside the application. This is not end-to-end encrypted storage. Keep hosting credentials and backups secure, and do not commit real financial documents, local databases, API keys, or `.dev.vars`.
+
+The local development identity bypass is only for `localhost` and `127.0.0.1`; never configure `DEV_EMAIL` in production. Hosted Access protection, permissions and backup restores must be verified before using real financial data.
+
+## Run locally
+
+Requirements: Node.js 24 and npm. Run the commands from the repository root. On Windows PowerShell, use `npm.cmd` if `npm.ps1` is blocked by the execution policy.
+
+1. Install dependencies:
+
+   ```powershell
+   npm.cmd install
+   ```
+
+2. Create `.dev.vars` in the project root. It is ignored by Git:
+
+   ```text
+   DEV_EMAIL=dev@example.com
+   BOOTSTRAP_ADMIN_EMAIL=dev@example.com
+   ```
+
+3. Apply the local database migrations, build the frontend and start the Worker:
+
+   ```powershell
+   npm.cmd run db:migrate:local
+   npm.cmd run build
+   npm.cmd run worker:dev
+   ```
+
+4. Open the address Wrangler prints, usually `http://localhost:8787`. Local database state and uploaded files stay on the computer running Wrangler. Stop the server with `Ctrl+C`.
+
+For another local test identity, first add a member through the app, then change `DEV_EMAIL` to that member's email and restart the Worker. Keep `BOOTSTRAP_ADMIN_EMAIL` unchanged. Local identities are a development convenience, not production sign-in.
+
+## Commands
+
+| Command                        | Purpose                                                                        |
+| ------------------------------ | ------------------------------------------------------------------------------ |
+| `npm.cmd run dev`              | Start the frontend development server; `/api` is forwarded to the local Worker |
+| `npm.cmd run worker:dev`       | Start the local Worker and serve the built frontend                            |
+| `npm.cmd run build`            | Type-check the project and build the frontend                                  |
+| `npm.cmd run test:imports`     | Test document parsing and review with fictional data                           |
+| `npm.cmd run test:balances`    | Test balance selection and migration with fictional data                       |
+| `npm.cmd run test:investments` | Test report matching and confirmed closures with fictional data                |
+| `npm.cmd run format:check`     | Check source formatting                                                        |
+| `npm.cmd run db:migrate:local` | Apply migrations to the local D1 database                                      |
+
+## Hosting and reminders
+
+The current deployment target is Cloudflare Workers with D1, a private R2 bucket and Cloudflare Access. The repository contains placeholder bindings, not a configured deployment. Each installation needs its own resources, Access policy and administrator identity. Do not use a production database for local experiments.
+
+Before family use:
+
+1. Create a D1 database and private R2 bucket. Configure the Worker bindings without committing account-specific credentials.
+2. Protect **all traffic** to the Worker with Cloudflare Access, restrict the policy to the family's email addresses, and configure the Access team domain, audience and bootstrap administrator email. Enable an appropriate sign-in method and verify unauthenticated requests are denied. See [Cloudflare's Worker Access guide](https://developers.cloudflare.com/workers/configuration/cloudflare-access/).
+3. Build the app and apply the remote migrations. Test each family member's access and privacy using fictional records before uploading real data.
+4. Set up independent backups for both D1 and R2, and test restoring them. D1 Time Travel does not restore R2 documents; see [D1 backups](https://developers.cloudflare.com/d1/reference/time-travel/) and [R2 CLI tools](https://developers.cloudflare.com/r2/get-started/cli/).
+5. For email reminders, configure a verified sender in `RESEND_FROM` and store `RESEND_API_KEY` as a Worker secret. The daily job runs at 09:00 India Standard Time and sends a generic reminder without payment details. See [Resend's documentation](https://resend.com/docs).
+
+The Cloudflare Free plan may suit a small family, but its request, execution and database limits should be checked against real usage. Email, storage overages, domains and backup services may have separate costs.
+
+## Project structure
 
 ```text
-frontend/             Browser application and Vite configuration
-  src/
-    app/              Startup, rendering, and event binding
-    pages/            One view per navigation page
-    actions/          Forms and actions grouped by finance area
-    imports/          Document upload, review, and file parsers
-    components/       Shared shell, modal, fields, and page elements
-    api/              HTTP client
-    state/            Browser state and access selectors
-    styles/           Application styles
-    types/            Browser record and callback types
-    utils/            Formatting and error notification
-backend/              Cloudflare Worker application
-  src/
-    worker.ts         HTTP and scheduled event entry point
-    router.ts         Authentication and API route dispatch
-    routes/           API handlers grouped by resource
-    auth/             Identity verification and record permissions
-    services/         Balances, audit, payment dates, and delivery adapters
-    jobs/             Reminder scheduling and document cleanup
-    lib/              Database, validation, JSON, and identifier helpers
-    types/            Worker bindings, records, and route context
-  migrations/         Ordered database migrations
-docs/                 Product specification and code-flow guide
-wrangler.jsonc        Deployment bindings, static assets, and cron schedule
-package.json          Shared dependencies and commands run from the repo root
+frontend/             Browser UI, pages, actions, imports and styles
+backend/src/          Worker API, authentication, routes, services and jobs
+backend/migrations/   Ordered D1 schema migrations
+tests/                Tests using fictional data
+scripts/              Local development and diagnostic utilities
+docs/                 Project specification and code-flow guide
+wrangler.jsonc        Template Worker bindings and schedule
 ```
 
-Start with [the code-flow guide](docs/code-structure.md) to trace a page, API request, document import, or scheduled job.
-
-## Current implementation
-
-- Cloudflare Worker API, D1 database, private R2 document storage, and a responsive browser UI.
-- Individual membership with admin deactivation/reactivation, owner-controlled view/edit grants, and account sharing that includes transactions and linked statements.
-- Indian Bank statement PDFs and term deposit summary PDFs are read in the browser into editable review tables. The uploader checks the suggested records and confirms a statement's ending balance before totals change. Overlapping statement imports retain their source links when an import is undone. Password-protected text PDFs can be opened with a password used only in the browser. Scanned PDFs still need OCR.
-- Groww `.xlsx` holdings reports, and compatible CSV files, are read in the browser. The importer identifies the holdings table below the summary and preserves folio, units and the report's valuation date for review. A multi-deposit FD report is private unless its owner explicitly shares the entire document.
-- The provided screenshots show headings but hide PDF data rows. PDF and spreadsheet importers have been checked with fictional examples; actual files still need private, local validation for differences in their rows, text layout, and formats before family use.
-- Payment schedules with optional transaction matching, email reminder jobs, source documents, spending, investment allocation and net worth checkpoint reports, personal JSON export, and owner-initiated financial data deletion.
-- Search and filter accessible transactions. Confirmed family transfers and loans appear in a family ledger; pending entries and changes require the other participant's approval. Family balances do not change net worth. Family ledger changes require migration `0006` locally before running the updated application.
-
-**No live financial data or provider credentials are in this repository.** The deployment is not configured yet. Do not upload real statements to the local development database if other people can access that computer.
-
-## Local development
-
-Requirements: Node.js 24 and npm. On Windows PowerShell, use `npm.cmd` if `npm.ps1` is blocked by execution policy.
-
-1. Run `npm.cmd install`.
-2. Create `.dev.vars` (ignored by Git) with `DEV_EMAIL=dev@example.com` and `BOOTSTRAP_ADMIN_EMAIL=dev@example.com`. This bypass is active only on localhost/127.0.0.1, and the variable must never be set in production.
-3. Run `npm.cmd run db:migrate:local`.
-4. Run `npm.cmd run build` and `npm.cmd run worker:dev`.
-5. Open the URL Wrangler prints, normally `http://localhost:8787`.
-
-If Wrangler cannot write its config directory in a restricted environment, set `XDG_CONFIG_HOME` to a writable directory in the workspace for that shell session. `.wrangler-config/` is ignored by Git.
-
-Run all commands from the repository root:
-
-| Command                         | Purpose                                                          |
-| ------------------------------- | ---------------------------------------------------------------- |
-| `npm.cmd run dev`               | Frontend development server; forwards `/api` to the local Worker |
-| `npm.cmd run worker:dev`        | Local backend and built frontend assets                          |
-| `npm.cmd run typecheck`         | Check frontend and backend TypeScript                            |
-| `npm.cmd run build`             | Type check and build frontend assets into `dist/`                |
-| `npm.cmd run test:imports`      | Run parser and review validation checks with fictional data      |
-| `npm.cmd run test:balances`     | Check balance selection and migration using fictional data       |
-| `npm.cmd run test:investments`  | Check report matching and confirmed closures with fictional data |
-| `npm.cmd run format`            | Format source, configuration, and developer documentation        |
-| `npm.cmd run format:check`      | Check formatting without changing files                          |
-| `npm.cmd run db:migrate:local`  | Apply `backend/migrations/` to the local database                |
-| `npm.cmd run db:migrate:remote` | Apply the same migrations to the hosted database                 |
-
-For frontend development, run the Worker and Vite in separate terminals. `.dev.vars`, Wrangler configuration, local database state, and build output stay at the root so existing local data and credentials use the same paths.
-
-## Deployment preparation
-
-Cloudflare is the proposed host. Before any production deployment:
-
-1. Create a D1 database and a **private** R2 bucket. Replace `REPLACE_AFTER_CREATION` in `wrangler.jsonc` with the D1 database ID.
-2. Configure Cloudflare Access for the entire Worker, with an allow policy containing only the four family email addresses. Cloudflare's [Worker Access guide](https://developers.cloudflare.com/workers/configuration/cloudflare-access/) describes the Worker-level setting, which covers `workers.dev` and custom domains. Set `ACCESS_TEAM_DOMAIN` and `ACCESS_AUD` in Wrangler from that Access application.
-3. Set `BOOTSTRAP_ADMIN_EMAIL` to the first family member's email. That address is the only account that can initialize the empty membership table. Other members are invited from the app and must also be on the Cloudflare Access allow list.
-4. Keep `DEV_EMAIL` unset in production. Run `npm.cmd run build`, apply remote D1 migrations, then deploy with Wrangler. Verify private Access protection before inviting the family or uploading files.
-5. Establish a separate backup of the D1 export **and** R2 documents before using the app with real data. D1 Time Travel alone does not back up R2 files. Test a restore using non-sensitive data.
-
-Deployment should wait until document import tests with redacted real samples and the privacy checks are complete.
-
-## Reminder providers
-
-The Worker cron runs daily at 09:00 India Standard Time (`03:30` UTC). It sends a generic email to the payment owner only, avoiding payment names and amounts. It records whether the provider accepted or rejected each attempt.
-
-- Email: configure a verified sender in `RESEND_FROM` and store `RESEND_API_KEY` as a Worker secret. The adapter uses [Resend's email API](https://resend.com/vercel).
-
-The email provider account and credentials are not supplied by this repository.
-
-## Backups
-
-Keep backups outside this repository in an encrypted location accessible only to the family administrator. A D1 export contains everyone’s private data, regardless of app sharing permissions. Cloudflare documents `wrangler d1 export` for a SQL backup and `rclone copy` for downloading a complete R2 bucket.
-
-```powershell
-New-Item -ItemType Directory -Path 'D:\SecureFamilyFinanceBackup' -Force
-npm.cmd exec -- wrangler d1 export family-finance --remote --output 'D:\SecureFamilyFinanceBackup\family-finance.sql'
-rclone copy r2:family-finance-documents 'D:\SecureFamilyFinanceBackup\documents'
-```
-
-Configure the `r2` remote with a private R2 access key using [Cloudflare’s rclone guide](https://developers.cloudflare.com/r2/examples/rclone/). Check the exported SQL file and document count, then periodically restore into separate test resources to verify the backup. Never commit backups, R2 keys, or `.dev.vars` to Git. See [Cloudflare’s D1 export guide](https://developers.cloudflare.com/d1/best-practices/import-export-data/) for restore commands.
-
-## Privacy model
-
-Cloudflare Access checks sign-in at the edge. The Worker independently verifies the Access JWT and matches its email to an active invited member. Every finance query checks the owner or an explicit share. An administrator can manage membership but does not automatically see another person's records. Source files are never served from a public R2 URL.
-
-An owner may delete their own financial records in Settings after typing a confirmation phrase. The database removes the records in one transaction and queues source files for R2 deletion. Failed file deletions are retried by the daily scheduled Worker. Membership and the deletion audit event remain; a backup created before deletion must be managed separately by the backup administrator.
-
-See [Cloudflare Access authorization](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/) for the signed identity token and the [project spec](docs/project-spec.md) for the intended access rules.
+See the [project specification](docs/project-spec.md) for product decisions and the [code-flow guide](docs/code-structure.md) for navigating the implementation.
