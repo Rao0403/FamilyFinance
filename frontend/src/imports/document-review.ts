@@ -97,6 +97,14 @@ export function showPreview(load: RefreshApplication) {
                     Review each deposit. The app stores a masked account reference and a matching
                     key; the retained original PDF contains its original details.
                   </p>
+                  <div class="report-date-control">
+                    <label for="fd-report-date">Report date for all deposits</label>
+                    <input id="fd-report-date" type="date" />
+                    <button class="secondary" id="fd-report-today" type="button">Use today</button>
+                    <p class="muted">
+                      Choose the report date or use today. You can still change individual rows.
+                    </p>
+                  </div>
                   <div class="review-table">
                     <table>
                       <thead>
@@ -298,6 +306,22 @@ ${esc(p.raw.slice(0, 4000))}</textarea>
     );
   };
   drawRows();
+  const reportDate = backdrop.querySelector<HTMLInputElement>("#fd-report-date");
+  const applyReportDate = (date: string) => {
+    if (!date) return;
+    for (const row of p.rows) row.report_date = date;
+    tableBody
+      ?.querySelectorAll<HTMLInputElement>('input[data-key="report_date"]')
+      .forEach((input) => {
+        input.value = date;
+      });
+  };
+  reportDate?.addEventListener("change", () => applyReportDate(reportDate.value));
+  backdrop.querySelector<HTMLButtonElement>("#fd-report-today")?.addEventListener("click", () => {
+    if (!reportDate) return;
+    reportDate.value = today();
+    applyReportDate(reportDate.value);
+  });
   backdrop.querySelector("#add-preview")?.addEventListener("click", () => {
     p.rows.push(
       p.kind === "account"
@@ -317,7 +341,7 @@ ${esc(p.raw.slice(0, 4000))}</textarea>
               rate_bps: null,
               maturity_date: "",
               maturity_amount_paise: null,
-              report_date: "",
+              report_date: reportDate?.value || "",
               source_ref: `manual-row-${p.rows.length + 1}`,
             }
           : {
@@ -348,6 +372,19 @@ ${esc(p.raw.slice(0, 4000))}</textarea>
       const reviewedRows = shouldImport
         ? await prepareReviewedRows(p.kind, p.rows, String(state.me?.id || ""))
         : [];
+      let closedIds: string[] = [];
+      if ((p.kind === "fd" || (p.kind === "investment" && !p.target)) && reviewedRows.length) {
+        const comparison = await post("imports/compare", { kind: p.kind, rows: reviewedRows });
+        for (const item of comparison.missing as Item[]) {
+          const identifier = item.symbol ? ` (${item.symbol})` : "";
+          if (
+            window.confirm(
+              `${item.name}${identifier} is missing from this report.\n\nIs it no longer held? Select OK to remove it from current investments. Its history and reports will be kept.\n\nSelect Cancel if it is still held or the report is incomplete.`,
+            )
+          )
+            closedIds.push(item.id);
+        }
+      }
       let statement: { closing_date: string; balance_paise: number } | undefined;
       if (p.kind === "account" && reviewedRows.length) {
         const closingDate =
@@ -396,9 +433,9 @@ ${esc(p.raw.slice(0, 4000))}</textarea>
           );
       }
       if (p.kind === "investment" && !p.target && p.rows.length)
-        await post(`imports/${uploaded.id}/commit`, { rows: reviewedRows });
+        await post(`imports/${uploaded.id}/commit`, { rows: reviewedRows, closed_ids: closedIds });
       if (p.kind === "fd" && p.rows.length)
-        await post(`imports/${uploaded.id}/commit`, { rows: reviewedRows });
+        await post(`imports/${uploaded.id}/commit`, { rows: reviewedRows, closed_ids: closedIds });
       backdrop.remove();
       state.preview = undefined;
       await load();

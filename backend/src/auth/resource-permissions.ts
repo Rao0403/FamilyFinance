@@ -1,6 +1,7 @@
 import { readAll } from "../lib/database";
 import type { Env } from "../types/environment";
 import type { Member } from "../types/records";
+import { currentInvestment } from "../services/investment-presence";
 
 export async function owns(env: Env, member: Member, table: string, id: string) {
   if (!["accounts", "investments", "payments", "documents"].includes(table)) return false;
@@ -78,8 +79,12 @@ export async function visible<T extends { id: string }>(
   member: Member,
   table: string,
   type: string,
+  includeClosed = false,
 ): Promise<T[]> {
-  const rows = await readAll<T>(env.DB.prepare(`SELECT * FROM ${table} ORDER BY created_at DESC`));
+  const filter = table === "investments" && !includeClosed ? ` WHERE ${currentInvestment}` : "";
+  const rows = await readAll<T>(
+    env.DB.prepare(`SELECT * FROM ${table}${filter} ORDER BY created_at DESC`),
+  );
   const results: T[] = [];
   for (const row of rows)
     if (await canView(env, member, type, row.id))

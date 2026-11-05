@@ -103,6 +103,31 @@
   max-height: 48vh;
   overflow: auto;
 }
+.report-date-control {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 4px 22px 18px;
+}
+.report-date-control label {
+  color: #5b6d60;
+  font-size: 12px;
+  font-weight: 700;
+}
+.report-date-control input {
+  min-height: 39px;
+  max-width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #dbe3d9;
+  border-radius: 8px;
+  color: #21372a;
+  background: white;
+}
+.report-date-control .muted {
+  flex-basis: 100%;
+  margin: 0;
+}
 .review-table input {
   width: 100%;
   min-width: 90px;

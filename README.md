@@ -69,6 +69,7 @@ Run all commands from the repository root:
 | `npm.cmd run build`             | Type check and build frontend assets into `dist/`                |
 | `npm.cmd run test:imports`      | Run parser and review validation checks with fictional data      |
 | `npm.cmd run test:balances`     | Check balance selection and migration using fictional data       |
+| `npm.cmd run test:investments`  | Check report matching and confirmed closures with fictional data |
 | `npm.cmd run format`            | Format source, configuration, and developer documentation        |
 | `npm.cmd run format:check`      | Check formatting without changing files                          |
 | `npm.cmd run db:migrate:local`  | Apply `backend/migrations/` to the local database                |

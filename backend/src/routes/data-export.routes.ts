@@ -26,6 +26,13 @@ export async function handleDataExportRoutes(context: RouteContext): Promise<Res
       env.DB.prepare("SELECT * FROM investments WHERE owner_id=?").bind(member.id),
     );
     const investmentIds = investments.map((x) => String(x.id));
+    const investmentPresence = investmentIds.length
+      ? await readAll(
+          env.DB.prepare(
+            `SELECT * FROM investment_presence_events WHERE investment_id IN (${investmentIds.map(() => "?").join(",")})`,
+          ).bind(...investmentIds),
+        )
+      : [];
     const snapshots = investmentIds.length
       ? await readAll(
           env.DB.prepare(
@@ -75,6 +82,7 @@ export async function handleDataExportRoutes(context: RouteContext): Promise<Res
           statementBalances,
           transactionImportSources,
           investments,
+          investmentPresence,
           snapshots,
           fixedDepositObservations,
           payments,

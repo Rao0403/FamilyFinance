@@ -5,7 +5,10 @@ import { asMoney } from "../backend/src/lib/validation";
 import { suggestRows } from "../frontend/src/imports/parsers/bank-statement-parser";
 import { suggestFixedDeposits } from "../frontend/src/imports/parsers/fixed-deposit-parser";
 import { parseGrowwSheets } from "../frontend/src/imports/parsers/groww-report-parser";
-import type { PdfLine } from "../frontend/src/imports/parsers/pdf-text-extractor";
+import {
+  displayedPosition,
+  type PdfLine,
+} from "../frontend/src/imports/parsers/pdf-text-extractor";
 import { prepareReviewedRows } from "../frontend/src/imports/validate-review";
 
 if (!globalThis.crypto) Object.defineProperty(globalThis, "crypto", { value: webcrypto });
@@ -159,6 +162,108 @@ test("FD report accepts split headings and deposits spread across multiple text 
       ["0000654321", "2024-03-04", 1000000, 650, 1065000],
     ],
   );
+});
+
+test("FD extraction does not require optional holder, receipt, currency and tenure headings", () => {
+  const result = suggestFixedDeposits([
+    line(
+      1,
+      ["Account Number", 115, 130],
+      ["Date of Deposit", 538, 116],
+      ["Deposit Amount", 657, 122],
+      ["Interest Rate", 1033, 96],
+      ["Maturity Date", 1132, 105],
+      ["Maturity Amount", 1240, 130],
+    ),
+    line(
+      2,
+      ["0000123456", 120, 120],
+      ["Fictional Person", 255, 130],
+      ["Regular", 450, 60],
+      ["01/03/2024", 540, 110],
+      ["50,000", 665, 100],
+      ["INR", 790, 40],
+      ["1 year", 890, 60],
+      ["7.25%", 1060, 40],
+      ["01/03/2025", 1135, 100],
+      ["53,625", 1260, 100],
+    ),
+  ]);
+  assert.equal(result.rows.length, 1);
+  assert.equal(result.rows[0].account_ref, "0000123456");
+  assert.equal(result.rows[0].principal_paise, 5000000);
+});
+
+test("FD extraction reads a rotated text PDF in its displayed orientation", async () => {
+  // This fictional PDF stores each horizontal display row as a vertical row in PDF coordinates.
+  const headings: [string, number][] = [
+    ["Account Number", 30],
+    ["Account Holder's Name", 120],
+    ["Receipt Type", 230],
+    ["Date of Deposit", 305],
+    ["Deposit Amount", 385],
+    ["Currency", 470],
+    ["Tenure", 525],
+    ["Interest Rate", 575],
+    ["Maturity Date", 650],
+    ["Maturity Amount", 730],
+  ];
+  const values: [string, number][] = [
+    ["0000123456", 30],
+    ["Example Name", 120],
+    ["Regular", 230],
+    ["01/03/2024", 305],
+    ["50,000", 385],
+    ["INR", 470],
+    ["1 year", 525],
+    ["7.25%", 575],
+    ["01/03/2025", 650],
+    ["53,625", 730],
+  ];
+  const draw = (row: [string, number][], x: number) =>
+    row.map(([text, y]) => `BT /F1 8 Tf 0 1 -1 0 ${x} ${y} Tm (${text}) Tj ET`).join("\n");
+  const stream = `${draw(headings, 400)}\n${draw(values, 430)}`;
+  const objects = [
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /Rotate 90 /MediaBox [0 0 600 1000] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    `<< /Length ${Buffer.byteLength(stream)} >>\nstream\n${stream}\nendstream`,
+  ];
+  let pdf = "%PDF-1.4\n";
+  const offsets: number[] = [];
+  objects.forEach((object, i) => {
+    offsets.push(Buffer.byteLength(pdf));
+    pdf += `${i + 1} 0 obj\n${object}\nendobj\n`;
+  });
+  const xref = Buffer.byteLength(pdf);
+  pdf += `xref\n0 6\n0000000000 65535 f \n${offsets.map((offset) => `${String(offset).padStart(10, "0")} 00000 n \n`).join("")}trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  const document = await pdfjs.getDocument({
+    data: new Uint8Array(Buffer.from(pdf)),
+    verbosity: 0,
+    disableFontFace: true,
+  }).promise;
+  const page = await document.getPage(1);
+  const viewport = page.getViewport({ scale: 1 });
+  const content = await page.getTextContent();
+  const grouped = new Map<number, PdfLine["items"]>();
+  for (const item of content.items) {
+    if (!("str" in item) || !item.str.trim()) continue;
+    const position = displayedPosition(item.transform, viewport.transform);
+    const y = Math.round(position.y / 3) * 3;
+    grouped.set(y, [
+      ...(grouped.get(y) || []),
+      { text: item.str, x: position.x, width: item.width },
+    ]);
+  }
+  const lines = [...grouped.entries()]
+    .sort((a, b) => b[0] - a[0])
+    .map(([, items], i) => ({ page: 1, line: i + 1, items: items.sort((a, b) => a.x - b.x) }));
+  const result = suggestFixedDeposits(lines);
+  assert.equal(result.rows.length, 1);
+  assert.equal(result.rows[0].principal_paise, 5000000);
+  assert.equal(result.rows[0].maturity_amount_paise, 5362500);
 });
 
 test("Groww holdings table is found below the summary and separate folios stay distinct", async () => {

@@ -8,6 +8,7 @@
     "typecheck": "tsc --noEmit -p frontend/tsconfig.json && tsc --noEmit -p backend/tsconfig.json",
     "test:imports": "tsx --test tests/import-parsers.test.ts",
     "test:balances": "tsx --test tests/account-balances.test.ts",
+    "test:investments": "tsx --test tests/investment-presence.test.ts",
     "build": "npm run typecheck && vite build --config frontend/vite.config.ts",
     "format": "prettier --write frontend backend docs tests README.md package.json wrangler.jsonc .prettierrc.json",
     "format:check": "prettier --check frontend backend docs tests README.md package.json wrangler.jsonc .prettierrc.json",

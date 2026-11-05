@@ -5,11 +5,18 @@ import { asDate, asMoney, asText } from "../lib/validation";
 import { accountBalanceStatement } from "../services/account-balances";
 import { audit } from "../services/audit-log";
 import { commitFixedDeposits, rollbackFixedDeposits } from "../services/fixed-deposit-import";
+import { compareInvestmentReport, holdingKey } from "../services/investment-presence";
 import type { RecordRow } from "../types/records";
 import type { RouteContext } from "../types/route-context";
 
 export async function handleImportsRoutes(context: RouteContext): Promise<Response | null> {
   const { request, env, member, path, method, key } = context;
+  if (key === "imports" && path[1] === "compare" && method === "POST") {
+    const data = await body(request);
+    const rows = Array.isArray(data.rows) ? (data.rows as RecordRow[]) : [];
+    if (rows.length > 1000) return fail(400, "Import limit is 1000 rows");
+    return json(await compareInvestmentReport(env, member, asText(data.kind), rows));
+  }
   if (key === "imports" && path[1] && !path[2] && method === "GET") {
     const batch = await env.DB.prepare(
       "SELECT id,document_id,target_id,type,status,created_at,committed_at FROM imports WHERE document_id=? AND owner_id=? ORDER BY created_at DESC LIMIT 1",
@@ -28,10 +35,26 @@ export async function handleImportsRoutes(context: RouteContext): Promise<Respon
     const data = await body(request),
       rows = Array.isArray(data.rows) ? (data.rows as RecordRow[]) : [];
     if (rows.length > 1000) return fail(400, "Import limit is 1000 rows");
+    const closedIds = Array.isArray(data.closed_ids) ? data.closed_ids.map((id) => asText(id)) : [];
+    const comparison =
+      batch.type === "fd" || batch.type === "investment"
+        ? await compareInvestmentReport(env, member, String(batch.type), rows)
+        : { date: "", missing: [] };
+    const eligible = new Set(comparison.missing.map((item) => item.id));
+    if (new Set(closedIds).size !== closedIds.length || closedIds.some((id) => !eligible.has(id)))
+      return fail(409, "The report comparison changed. Review the import again.");
     let imported = 0,
       duplicates = 0;
     if (batch.type === "fd") {
-      imported = await commitFixedDeposits(env, member, path[1], String(batch.id), rows);
+      imported = await commitFixedDeposits(
+        env,
+        member,
+        path[1],
+        String(batch.id),
+        rows,
+        closedIds,
+        comparison.date,
+      );
     } else if (batch.type === "account" && batch.target_id) {
       if (!data.statement || typeof data.statement !== "object" || Array.isArray(data.statement))
         return fail(400, "Enter the statement end date and ending balance");
@@ -111,8 +134,7 @@ export async function handleImportsRoutes(context: RouteContext): Promise<Respon
           member.id,
         ),
       );
-      const keyFor = (type: string, name: string, symbol: string) =>
-        `${type}\u0000${name.toLowerCase()}\u0000${symbol}`;
+      const keyFor = holdingKey;
       const known = new Map(
         existing.map((item) => [keyFor(item.type, item.name, item.symbol || ""), item.id]),
       );
@@ -158,7 +180,18 @@ export async function handleImportsRoutes(context: RouteContext): Promise<Respon
             `${path[1]}:${asText(row.source_ref)}`,
           ),
         );
+        statements.push(
+          env.DB.prepare(
+            "INSERT INTO investment_presence_events(id,investment_id,document_id,as_of,present) VALUES(?,?,?,?,1) ON CONFLICT(investment_id,document_id) DO UPDATE SET as_of=MAX(investment_presence_events.as_of,excluded.as_of)",
+          ).bind(uid(), investmentId, path[1], asOf),
+        );
       }
+      for (const id of closedIds)
+        statements.push(
+          env.DB.prepare(
+            "INSERT INTO investment_presence_events(id,investment_id,document_id,as_of,present) VALUES(?,?,?,?,0)",
+          ).bind(uid(), id, path[1], comparison.date),
+        );
       statements.push(
         env.DB.prepare("UPDATE imports SET status='committed',committed_at=? WHERE id=?").bind(
           now(),
@@ -189,6 +222,9 @@ export async function handleImportsRoutes(context: RouteContext): Promise<Respon
     }
     await env.DB.batch([
       env.DB.prepare(
+        "DELETE FROM investment_presence_events WHERE document_id=? AND investment_id IN (SELECT id FROM investments WHERE owner_id=?)",
+      ).bind(path[1], member.id),
+      env.DB.prepare(
         "DELETE FROM statement_balances WHERE document_id=? AND account_id IN (SELECT id FROM accounts WHERE owner_id=?)",
       ).bind(path[1], member.id),
       env.DB.prepare(
@@ -209,7 +245,7 @@ export async function handleImportsRoutes(context: RouteContext): Promise<Respon
     if (batch.type === "investment") {
       const empty = await readAll<{ id: string }>(
         env.DB.prepare(
-          "SELECT i.id FROM investments i WHERE i.owner_id=? AND i.created_import_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM investment_snapshots s WHERE s.investment_id=i.id)",
+          "SELECT i.id FROM investments i WHERE i.owner_id=? AND i.created_import_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM investment_snapshots s WHERE s.investment_id=i.id) AND NOT EXISTS (SELECT 1 FROM investment_presence_events e WHERE e.investment_id=i.id)",
         ).bind(member.id),
       );
       for (const item of empty) {

@@ -25,6 +25,8 @@ export async function commitFixedDeposits(
   documentId: string,
   batchId: string,
   rows: RecordRow[],
+  missingIds: string[],
+  reportDate: string,
 ) {
   const existing = await readAll<{ id: string; symbol: string }>(
     env.DB.prepare(
@@ -84,7 +86,18 @@ export async function commitFixedDeposits(
       ),
     );
     statements.push(updateFromLatest(env, id));
+    statements.push(
+      env.DB.prepare(
+        "INSERT INTO investment_presence_events(id,investment_id,document_id,as_of,present) VALUES(?,?,?,?,1)",
+      ).bind(uid(), id, documentId, date),
+    );
   }
+  for (const id of missingIds)
+    statements.push(
+      env.DB.prepare(
+        "INSERT INTO investment_presence_events(id,investment_id,document_id,as_of,present) VALUES(?,?,?,?,0)",
+      ).bind(uid(), id, documentId, reportDate),
+    );
   statements.push(
     env.DB.prepare("UPDATE imports SET status='committed',committed_at=? WHERE id=?").bind(
       now(),
@@ -111,13 +124,16 @@ export async function rollbackFixedDeposits(
   );
   const statements: D1PreparedStatement[] = [
     env.DB.prepare(
+      "DELETE FROM investment_presence_events WHERE document_id=? AND investment_id IN (SELECT id FROM investments WHERE owner_id=?)",
+    ).bind(documentId, member.id),
+    env.DB.prepare(
       "DELETE FROM fd_report_observations WHERE document_id=? AND investment_id IN (SELECT id FROM investments WHERE owner_id=?)",
     ).bind(documentId, member.id),
   ];
   for (const item of affected) {
     statements.push(updateFromLatest(env, item.id));
     const empty =
-      "NOT EXISTS (SELECT 1 FROM fd_report_observations WHERE investment_id=investments.id) AND NOT EXISTS (SELECT 1 FROM investment_snapshots WHERE investment_id=investments.id)";
+      "NOT EXISTS (SELECT 1 FROM fd_report_observations WHERE investment_id=investments.id) AND NOT EXISTS (SELECT 1 FROM investment_snapshots WHERE investment_id=investments.id) AND NOT EXISTS (SELECT 1 FROM investment_presence_events WHERE investment_id=investments.id)";
     statements.push(
       env.DB.prepare(
         `DELETE FROM shares WHERE resource_type='investment' AND resource_id IN (SELECT id FROM investments WHERE id=? AND created_import_id IS NOT NULL AND ${empty})`,

@@ -15,7 +15,7 @@ const names = [
   "maturityAmount",
 ] as const;
 const patterns = {
-  account: /account\s+number/i,
+  account: /account\s+(?:number|no\.?)/i,
   holder: /account\s+holder.?s?\s+name/i,
   receipt: /receipt\s+type/i,
   start: /date\s+of\s+deposit/i,
@@ -26,6 +26,7 @@ const patterns = {
   maturity: /maturity\s+date/i,
   maturityAmount: /maturity\s+amount/i,
 };
+const required = ["account", "start", "principal", "rate", "maturity", "maturityAmount"] as const;
 
 export function suggestFixedDeposits(lines: PdfLine[]): { rows: Item[]; warnings: string[] } {
   const rows: Item[] = [];
@@ -63,15 +64,23 @@ export function suggestFixedDeposits(lines: PdfLine[]): { rows: Item[]; warnings
     // PDF text extraction can split a heading across successive visual lines.
     let found: ReturnType<typeof columns> = null;
     let used = 0;
-    for (let count = 1; count <= 3 && index + count <= lines.length; count++) {
+    for (let count = 1; count <= 12 && index + count <= lines.length; count++) {
       const group = lines.slice(index, index + count);
       if (group.some((part) => part.page !== line.page)) break;
       const combined: PdfLine = {
         ...line,
         items: group.flatMap((part) => part.items).sort((a, b) => a.x - b.x),
       };
-      found = columns(combined, patterns);
-      if (found) {
+      const detected: NonNullable<ReturnType<typeof columns>> = {};
+      for (const [name, pattern] of Object.entries(patterns)) {
+        const match = columns(combined, { [name]: pattern });
+        if (match) detected[name] = match[name];
+      }
+      const ordered = required.every(
+        (name, i) => !i || detected[name]?.start > detected[required[i - 1]]?.start,
+      );
+      if (required.every((name) => detected[name]) && ordered) {
+        found = detected;
         used = count;
         break;
       }
@@ -86,17 +95,24 @@ export function suggestFixedDeposits(lines: PdfLine[]): { rows: Item[]; warnings
     if (pending && pending.page !== line.page) flush();
     const current = header;
     const values: Record<string, string[]> = Object.fromEntries(names.map((name) => [name, []]));
+    const visibleColumns = names.filter((name) => current[name]);
     for (const item of line.items) {
       const centre = item.x + item.width / 2;
-      const column = names.find((name, i) => {
-        const next = names[i + 1];
+      const column = visibleColumns.find((name, i) => {
+        const next = visibleColumns[i + 1];
         const left = i
-          ? (current[names[i - 1]].end + current[name].start) / 2
+          ? (current[visibleColumns[i - 1]].end + current[name].start) / 2
           : current[name].start - 20;
         const right = next ? (current[name].end + current[next].start) / 2 : current[name].end + 80;
         return centre >= left && centre < right;
       });
-      if (column) values[column].push(item.text.trim());
+      const text = item.text.trim();
+      if (column === "account" && !/^\d+$/.test(text.replace(/\s/g, ""))) continue;
+      if ((column === "principal" || column === "maturityAmount") && parseAmount(text) === null)
+        continue;
+      if ((column === "start" || column === "maturity") && !parseDate(text)) continue;
+      if (column === "rate" && !/^\d+(?:\.\d{1,2})?\s*%?$/.test(text)) continue;
+      if (column) values[column].push(text);
     }
     const account = values.account.join("").replace(/\s/g, "");
     if (/^\d{4,32}$/.test(account)) {

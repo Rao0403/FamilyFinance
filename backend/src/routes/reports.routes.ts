@@ -17,7 +17,7 @@ export async function handleReportsRoutes(context: RouteContext): Promise<Respon
       type: string;
       principal_paise: number | null;
       start_date: string | null;
-    }>(env, member, "investments", "investment");
+    }>(env, member, "investments", "investment", true);
     const ids = accounts.map((a) => a.id);
     const rows = ids.length
       ? await readAll<{
@@ -47,6 +47,18 @@ export async function handleReportsRoutes(context: RouteContext): Promise<Respon
           ).bind(...investments.map((i) => i.id)),
         )
       : [];
+    const presence = investments.length
+      ? await readAll<{
+          investment_id: string;
+          as_of: string;
+          present: number;
+          event_order: number;
+        }>(
+          env.DB.prepare(
+            `SELECT investment_id,as_of,present,rowid AS event_order FROM investment_presence_events WHERE investment_id IN (${investments.map(() => "?").join(",")})`,
+          ).bind(...investments.map((i) => i.id)),
+        )
+      : [];
     const monthly = new Map<
       string,
       { month: string; income_paise: number; spending_paise: number }
@@ -70,6 +82,7 @@ export async function handleReportsRoutes(context: RouteContext): Promise<Respon
       ...rows.filter((r) => r.balance_paise != null).map((r) => r.date.slice(0, 7)),
       ...statements.map((s) => s.date.slice(0, 7)),
       ...snapshots.map((s) => s.as_of.slice(0, 7)),
+      ...presence.map((event) => event.as_of.slice(0, 7)),
       ...investments
         .filter((i) => i.type === "fd")
         .map((i) => i.start_date?.slice(0, 7))
@@ -117,6 +130,10 @@ export async function handleReportsRoutes(context: RouteContext): Promise<Respon
       }
       if (missing) continue;
       for (const investment of investments) {
+        const event = presence
+          .filter((e) => e.investment_id === investment.id && e.as_of <= end)
+          .sort((a, b) => b.as_of.localeCompare(a.as_of) || b.event_order - a.event_order)[0];
+        if (event && !event.present) continue;
         const snapshot = snapshots
           .filter((s) => s.investment_id === investment.id && s.as_of <= end)
           .sort((a, b) => b.as_of.localeCompare(a.as_of))[0];

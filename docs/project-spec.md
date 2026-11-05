@@ -63,6 +63,7 @@ Editing another person's records is not allowed unless the owner explicitly gran
 - Track stocks and mutual funds by owner, instrument, quantity/units, cost or invested amount, and latest uploaded valuation with its date.
 - Import supported Groww reports after the actual file layout is inspected. The holdings table appears below a personal details and summary section, and includes the as-of date, scheme, folio, units, invested value and current value. Show an import preview and match incoming positions with existing holdings; prevent double counting across repeated uploads.
 - Preserve historical uploads so portfolio values and contributions can be viewed over time. Clearly distinguish invested amount, current value, and gain/loss. Values from uploaded reports are snapshots, not live prices.
+- Compare each dated report with previously imported holdings of the same kind. Ask separately about each absent holding; only explicit confirmation removes it from current investments and totals. Keep historical values and original reports, and restore the holding if it reappears in a later report. Partial or older reports must never silently close holdings.
 - Track each FD's bank, principal, interest rate, start date, maturity date, maturity amount (if available), and document. Show principal and maturity amount separately. Use a current value in net worth only when that value is available or an agreed calculation rule has been defined; otherwise use principal and label it.
 
 ### Payments and reminders
