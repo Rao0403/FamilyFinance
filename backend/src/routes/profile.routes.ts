@@ -12,9 +12,7 @@ export async function handleProfileRoutes(context: RouteContext): Promise<Respon
   if (key === "me" && method === "PATCH") {
     const data = await body(request),
       name = asText(data.name) || member.name;
-    await env.DB.prepare("UPDATE members SET name=? WHERE id=?")
-      .bind(name, member.id)
-      .run();
+    await env.DB.prepare("UPDATE members SET name=? WHERE id=?").bind(name, member.id).run();
     await audit(env, member, "profile", "member", member.id);
     return json({ ok: true });
   }

@@ -52,12 +52,13 @@ export function parseDate(value: string): string | null {
     : null;
 }
 
-export function parseAmount(value: string): number | null {
+export function parseAmount(value: string, requireDecimals = false): number | null {
   const clean = value
     .trim()
     .replace(/^(?:₹|rs\.?|inr)\s*/i, "")
     .replace(/,/g, "");
   if (!/^-?\d+(?:\.\d{1,2})?$/.test(clean)) return null;
+  if (requireDecimals && !/\.\d{2}$/.test(clean)) return null;
   const result = Math.round(Number(clean) * 100);
   return Number.isSafeInteger(result) ? result : null;
 }

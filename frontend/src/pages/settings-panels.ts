@@ -45,8 +45,9 @@ export function settingsPanels() {
                 <h2>Delete my financial data</h2>
                 <p>
                   This removes your accounts, transactions, investments, payments, shares, and
-                  uploaded documents. Your family login stays active.
-                  Confirmed family ledger entries and proposals remain, because they involve another member. Propose their removal in the family ledger.
+                  uploaded documents. Your family login stays active. Confirmed family ledger
+                  entries and proposals remain, because they involve another member. Propose their
+                  removal in the family ledger.
                 </p>
               </div>
             </div>

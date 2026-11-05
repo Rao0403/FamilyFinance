@@ -2,8 +2,7 @@ import type { Env } from "../types/environment";
 import type { Member } from "../types/records";
 
 export async function sendReminder(env: Env, recipient: Member) {
-  if (!env.RESEND_API_KEY || !env.RESEND_FROM)
-    throw new Error("Email provider is not configured");
+  if (!env.RESEND_API_KEY || !env.RESEND_FROM) throw new Error("Email provider is not configured");
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {

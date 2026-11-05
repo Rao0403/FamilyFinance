@@ -33,13 +33,31 @@ export function bind(load: RefreshApplication) {
   const applyFilters = () => {
     if (!filters) return;
     let count = 0;
-    for (const row of app.querySelectorAll<HTMLTableRowElement>("tr[data-transaction-id]")) {
+    for (const row of Array.from(
+      app.querySelectorAll<HTMLTableRowElement>("tr[data-transaction-id]"),
+    )) {
       const tx = state.transactions.find((item) => item.id === row.dataset.transactionId);
       if (!tx) continue;
       const search = value(filters, "search").trim().toLowerCase();
-      const from = value(filters, "from"), to = value(filters, "to"), account = value(filters, "account"), category = value(filters, "category"), direction = value(filters, "direction"), min = value(filters, "min"), max = value(filters, "max");
+      const from = value(filters, "from"),
+        to = value(filters, "to"),
+        account = value(filters, "account"),
+        category = value(filters, "category"),
+        direction = value(filters, "direction"),
+        min = value(filters, "min"),
+        max = value(filters, "max");
       const amount = Math.abs(tx.amount_paise) / 100;
-      row.hidden = !!((search && !String(tx.description).toLowerCase().includes(search)) || (from && tx.date < from) || (to && tx.date > to) || (account && tx.account_id !== account) || (category && tx.category !== category) || (direction === "in" && tx.amount_paise <= 0) || (direction === "out" && tx.amount_paise >= 0) || (min && amount < Number(min)) || (max && amount > Number(max)));
+      row.hidden = !!(
+        (search && !String(tx.description).toLowerCase().includes(search)) ||
+        (from && tx.date < from) ||
+        (to && tx.date > to) ||
+        (account && tx.account_id !== account) ||
+        (category && tx.category !== category) ||
+        (direction === "in" && tx.amount_paise <= 0) ||
+        (direction === "out" && tx.amount_paise >= 0) ||
+        (min && amount < Number(min)) ||
+        (max && amount > Number(max))
+      );
       if (!row.hidden) count++;
     }
     const label = app.querySelector<HTMLElement>("#transaction-filter-count");
@@ -52,15 +70,29 @@ export function bind(load: RefreshApplication) {
   const month = app.querySelector<HTMLInputElement>("#ledger-month");
   const renderLedgerTotals = () => {
     if (!month) return;
-    const visible = state.ledger.entries.filter((entry) => !month.value || entry.date.startsWith(month.value));
-    for (const row of app.querySelectorAll<HTMLTableRowElement>("tr[data-ledger-id]")) row.hidden = !visible.some((entry) => entry.id === row.dataset.ledgerId);
+    const visible = state.ledger.entries.filter(
+      (entry) => !month.value || entry.date.startsWith(month.value),
+    );
+    for (const row of Array.from(app.querySelectorAll<HTMLTableRowElement>("tr[data-ledger-id]")))
+      row.hidden = !visible.some((entry) => entry.id === row.dataset.ledgerId);
     const totals = state.members.map((member) => {
-      const sent = visible.filter((entry) => entry.kind !== "opening_loan" && entry.sender_id === member.id).reduce((sum, entry) => sum + entry.amount_paise, 0);
-      const received = visible.filter((entry) => entry.kind !== "opening_loan" && entry.recipient_id === member.id).reduce((sum, entry) => sum + entry.amount_paise, 0);
-      return `${nameOf(member.id)}: sent ${money(sent)}, received ${money(received)}`;
+      const sent = visible
+        .filter((entry) => entry.kind !== "opening_loan" && entry.sender_id === member.id)
+        .reduce((sum, entry) => sum + entry.amount_paise, 0);
+      const received = visible
+        .filter((entry) => entry.kind !== "opening_loan" && entry.recipient_id === member.id)
+        .reduce((sum, entry) => sum + entry.amount_paise, 0);
+      const item = document.createElement("div");
+      item.className = "ledger-total";
+      const name = document.createElement("strong");
+      name.textContent = nameOf(member.id);
+      const amounts = document.createElement("span");
+      amounts.textContent = `Sent ${money(sent)} · received ${money(received)}`;
+      item.append(name, amounts);
+      return item;
     });
     const target = app.querySelector<HTMLElement>("#ledger-totals");
-    if (target) target.textContent = totals.join(" · ");
+    if (target) target.replaceChildren(...totals);
   };
   month?.addEventListener("input", renderLedgerTotals);
   renderLedgerTotals();

@@ -50,16 +50,24 @@ export function suggestRows(lines: PdfLine[]): {
     const description: string[] = [];
     const debitBoundary = (anchors.debit.end + anchors.credit.end) / 2;
     const creditBoundary = (anchors.credit.end + anchors.balance.end) / 2;
+    let unclearAmount = false;
     for (const item of line.items) {
       if (item === dateItem) continue;
-      const amount = parseAmount(item.text);
+      const amount = parseAmount(item.text, true);
       const edge = rightEdge(item);
+      if (edge >= detailBoundary && amount === null && parseAmount(item.text) !== null)
+        unclearAmount = true;
       if (amount !== null && edge >= detailBoundary) {
         const field = edge < debitBoundary ? "debit" : edge < creditBoundary ? "credit" : "balance";
         amounts[field].push(amount);
       } else if (edge < detailBoundary && item.x >= dateItem.x) description.push(item.text.trim());
     }
-    if (amounts.debit.length > 1 || amounts.credit.length > 1 || amounts.balance.length > 1) {
+    if (
+      unclearAmount ||
+      amounts.debit.length > 1 ||
+      amounts.credit.length > 1 ||
+      amounts.balance.length > 1
+    ) {
       skipped++;
       continue;
     }

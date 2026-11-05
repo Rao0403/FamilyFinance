@@ -50,8 +50,8 @@ export function payments() {
       <div>
         <strong>Reminder delivery</strong>
         <p>
-          Email sending requires provider credentials and sender setup. Payment tracking
-          works independently.
+          Email sending requires provider credentials and sender setup. Payment tracking works
+          independently.
         </p>
       </div>
     </div>

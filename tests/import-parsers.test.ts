@@ -76,12 +76,12 @@ test("FD summary extracts reviewed fields and never sends the full reference as 
       ["Fictional Member", 255, 130],
       ["Regular", 450, 60],
       ["01/03/2024", 540, 110],
-      ["50,000.00", 665, 100],
+      ["50,000", 665, 100],
       ["INR", 790, 40],
       ["1 year", 890, 60],
       ["7.25", 1060, 40],
       ["01/03/2025", 1135, 100],
-      ["53,625.00", 1260, 100],
+      ["53,625", 1260, 100],
     ),
   ]);
   assert.equal(result.rows.length, 1);
