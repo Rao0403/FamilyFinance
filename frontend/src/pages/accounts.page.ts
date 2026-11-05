@@ -20,7 +20,7 @@ export function accounts() {
         · Recorded transactions only; statements may be incomplete
       </small>
       <div class="account-bottom">
-        <span>As of ${dateLabel(a.balance_as_of)}</span>
+        <span>Last confirmed ${dateLabel(a.balance_as_of)}</span>
         ${
           owned(a)
             ? /* HTML */ `

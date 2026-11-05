@@ -105,6 +105,62 @@ test("FD summary extracts reviewed fields and never sends the full reference as 
   );
 });
 
+test("FD report accepts split headings and deposits spread across multiple text lines", () => {
+  const result = suggestFixedDeposits([
+    line(
+      1,
+      ["Account", 115, 60],
+      ["Account Holder's Name", 250, 175],
+      ["Receipt Type", 430, 105],
+      ["Date of", 538, 60],
+      ["Deposit Amount", 657, 122],
+      ["Currency", 782, 74],
+      ["Tenure", 858, 167],
+      ["Interest Rate", 1033, 96],
+      ["Maturity Date", 1132, 105],
+      ["Maturity Amount", 1240, 130],
+    ),
+    line(2, ["Number", 115, 60], ["Deposit", 538, 65]),
+    line(3, ["0000123456", 120, 120], ["Example Person", 255, 130], ["Regular", 450, 60]),
+    line(
+      4,
+      ["01/03/2024", 540, 110],
+      ["50,000", 665, 100],
+      ["INR", 790, 40],
+      ["1 year", 890, 60],
+      ["7.25%", 1060, 40],
+      ["01/03/2025", 1135, 100],
+      ["53,625", 1260, 100],
+    ),
+    line(
+      5,
+      ["0000654321", 120, 120],
+      ["Other Member", 255, 130],
+      ["Regular", 450, 60],
+      ["04/03/2024", 540, 110],
+      ["10,000", 665, 100],
+      ["INR", 790, 40],
+      ["1 year", 890, 60],
+      ["6.50%", 1060, 40],
+      ["04/03/2025", 1135, 100],
+      ["10,650", 1260, 100],
+    ),
+  ]);
+  assert.deepEqual(
+    result.rows.map((row) => [
+      row.account_ref,
+      row.start_date,
+      row.principal_paise,
+      row.rate_bps,
+      row.maturity_amount_paise,
+    ]),
+    [
+      ["0000123456", "2024-03-01", 5000000, 725, 5362500],
+      ["0000654321", "2024-03-04", 1000000, 650, 1065000],
+    ],
+  );
+});
+
 test("Groww holdings table is found below the summary and separate folios stay distinct", async () => {
   const data: unknown[][] = Array.from({ length: 20 }, () => []);
   data[2] = ["Personal Details"];

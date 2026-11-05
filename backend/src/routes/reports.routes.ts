@@ -2,6 +2,7 @@ import { visible } from "../auth/resource-permissions";
 import { readAll } from "../lib/database";
 import { json } from "../lib/http";
 import type { RouteContext } from "../types/route-context";
+import { selectBalanceBaseline } from "../services/balance-baseline";
 
 export async function handleReportsRoutes(context: RouteContext): Promise<Response | null> {
   const { env, member, method, key } = context;
@@ -94,13 +95,19 @@ export async function handleReportsRoutes(context: RouteContext): Promise<Respon
                 .filter((r) => r.balance_paise != null)
                 .sort((a, b) => b.date.localeCompare(a.date))[0]
             : undefined);
-        const baselineDate = statement?.date ?? account.opening_date;
+        const baseline = selectBalanceBaseline(
+          statement ?? null,
+          account.opening_date && account.opening_date <= end
+            ? { date: account.opening_date, balance_paise: account.opening_balance_paise }
+            : null,
+        );
+        const baselineDate = baseline?.date;
         if (!baselineDate || baselineDate > end) {
           missing = true;
           break;
         }
         total +=
-          (statement?.balance_paise ?? account.opening_balance_paise) +
+          baseline.balance_paise +
           eligible.filter((r) => r.date > baselineDate).reduce((sum, r) => sum + r.amount_paise, 0);
         if (
           Date.parse(`${end}T00:00:00Z`) - Date.parse(`${baselineDate}T00:00:00Z`) >

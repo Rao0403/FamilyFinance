@@ -2,7 +2,7 @@ import { post } from "../api/finance-api";
 import { field, value } from "../components/form-fields";
 import { openModal } from "../components/modal";
 import type { RefreshApplication } from "../types/finance-record";
-import { paise } from "../utils/formatters";
+import { paise, today } from "../utils/formatters";
 
 export async function handleAccountAction(
   type: string,
@@ -26,8 +26,9 @@ export async function handleAccountAction(
           false,
           'placeholder="e.g. •••• 1234"',
         ),
-        field("Opening balance (₹)", "opening_balance", "number", true, 'step="0.01" value="0"'),
-        field("Balance date", "opening_date", "date", false),
+        field("Known bank balance (₹)", "opening_balance", "number", true, 'step="0.01" value="0"'),
+        field("Balance as of (date)", "opening_date", "date", true, `value="${today()}"`),
+        '<p class="muted">Use a balance covering the end of this date. Transactions on the same date are assumed to be included; later dated transactions are added.</p>',
       ].join(""),
       async (f) => {
         await post("accounts", {

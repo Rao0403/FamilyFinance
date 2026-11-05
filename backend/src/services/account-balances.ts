@@ -1,4 +1,5 @@
 import type { Env } from "../types/environment";
+import { selectBalanceBaseline } from "./balance-baseline";
 
 export async function accountBalanceStatement(
   env: Env,
@@ -22,15 +23,21 @@ export async function accountBalanceStatement(
       .bind(accountId)
       .first<{ date: string; balance_paise: number }>();
   }
-  const baseline = latest?.date ?? account.opening_date ?? "0000-00-00";
+  const selected = selectBalanceBaseline(
+    latest,
+    account.opening_date
+      ? { date: account.opening_date, balance_paise: account.opening_balance_paise }
+      : null,
+  );
+  const baseline = selected?.date ?? "0000-00-00";
   const newer = await env.DB.prepare(
     "SELECT coalesce(sum(amount_paise),0) AS amount FROM transactions WHERE account_id=? AND date>?",
   )
     .bind(accountId, baseline)
     .first<{ amount: number }>();
   return env.DB.prepare("UPDATE accounts SET balance_paise=?,balance_as_of=? WHERE id=?").bind(
-    (latest?.balance_paise ?? account.opening_balance_paise) + (newer?.amount ?? 0),
-    latest?.date ?? account.opening_date,
+    (selected?.balance_paise ?? account.opening_balance_paise) + (newer?.amount ?? 0),
+    selected?.date ?? null,
     accountId,
   );
 }

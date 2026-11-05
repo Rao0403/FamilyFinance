@@ -91,7 +91,7 @@ Editing another person's records is not allowed unless the owner explicitly gran
 
 - Money is stored and displayed in INR with paise precision. Dates retain the source date and use India Standard Time for schedules.
 - Every imported value retains provenance: document, page/row where available, import time, and any user correction.
-- A statement balance is authoritative for the date it represents. Later app balances are derived from confirmed transactions and labelled with their last reconciled date.
+- The latest dated manually entered balance or statement ending balance is the baseline; a statement takes precedence on the same date. Later-dated transactions are added. A balance is assumed to include all transactions on its date; the app cannot determine same-day ordering from a date alone. Label the baseline date.
 - Investment values have an **as of** date. Gains/losses compare the value and invested amount from compatible snapshots, accounting for recorded purchases and sales rather than treating deposits as returns.
 - Missing documents create an incomplete period; the dashboard must not imply that the displayed total is comprehensive.
 
